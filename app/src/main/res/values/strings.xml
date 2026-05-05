@@ -1,0 +1,131 @@
+<resources>
+    <string name="app_name">24Property</string>
+
+    <!-- Login Screen -->
+    <string name="login_tagline">Discover Your Dream Property. Premium real estate platform with role-based management and exclusive listings.</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="login_footer">By signing in, you agree to our Terms of Service and Privacy Policy</string>
+    <string name="authenticating">Authenticating…</string>
+    <string name="please_wait_verify">Please wait while we verify your account…</string>
+    <string name="login_successful">Login Successful!</string>
+    <string name="welcome_to_app">Welcome to 24Property</string>
+
+    <!-- Errors -->
+    <string name="error_sign_in_failed">Sign in failed</string>
+    <string name="error_no_user">No user returned from authentication</string>
+    <string name="error_user_not_found">User not found</string>
+    <string name="error_unknown">An unknown error occurred</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+
+    <!--
+      WEB_CLIENT_ID is injected at build time from local.properties via app/build.gradle.kts
+      as BuildConfig.WEB_CLIENT_ID. Do NOT add it here. Add WEB_CLIENT_ID=<your-id> to
+      local.properties instead.
+    -->
+
+    <!-- Profile Screen -->
+    <string name="complete_your_profile">Complete Your Profile</string>
+    <string name="edit_profile">Edit Profile</string>
+    <string name="profile_picture">Profile Picture</string>
+    <string name="email">Email</string>
+    <string name="name_required">Name *</string>
+    <string name="mobile_required">Mobile Number *</string>
+    <string name="i_want_to_join_as">I want to join as</string>
+    <string name="current_role">Current Role</string>
+    <string name="request_role_change">Request Role Change</string>
+    <string name="request_new_role">Request New Role</string>
+    <string name="complete_profile">Complete Profile</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="logout">Logout</string>
+    <string name="cancel">Cancel</string>
+    <string name="retry">Retry</string>
+
+    <!-- Profile Messages -->
+    <string name="complete_profile_message">Please complete your profile to continue using the app.</string>
+    <string name="name_required_error">Name is required</string>
+    <string name="mobile_required_error">Mobile number is required</string>
+    <string name="role_approval_warning">Approval required for Broker/Admin. You will join as User first.</string>
+    <string name="pending_requests">Pending requests: %1$s</string>
+    <string name="error_loading_profile">Failed to load profile</string>
+
+    <!-- Bottom Navigation Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_favorites">Favourites</string>
+    <string name="tab_auctions">Auctions</string>
+    <string name="tab_more">More</string>
+
+    <!-- Home Screen -->
+    <string name="welcome_home">Welcome to 24Property!</string>
+    <string name="home_placeholder_message">Your property listings will appear here. This is your home dashboard.</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites">Favourites</string>
+    <string name="favorites_placeholder">Your favorite properties will appear here.</string>
+
+    <!-- Auctions Screen -->
+    <string name="auctions">Auctions</string>
+    <string name="auctions_placeholder">Active auctions will appear here.</string>
+
+    <!-- More Screen -->
+    <string name="more">More</string>
+    <string name="profile">Profile</string>
+    <string name="settings">Settings</string>
+    <string name="about">About</string>
+    <string name="help_support">Help &amp; Support</string>
+
+    <!-- Google Fonts Provider Certificates -->
+    <string-array name="com_google_android_gms_fonts_certs">
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNV
+            BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
+            aWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDEQMA4G
+            A1UEAxMHQW5kcm9pZDAeFw0wODA4MjEyNzEzMzRaFw0zNjAxMDcyNzEzMzRaMHQx
+            CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3Vu
+            dGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9p
+            ZDEQMA4GA1UEAxMHQW5kcm9pZDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC
+            ggEBAKtWLgDYO6IIrgqWbxJOKdoKrEgih81fIDdQ8EKFhj3J9K1y7B8k5lFQfIB
+            dIQzDX43nvEMSPkqC7jJ8qYjFQFCXyQI8gPwBLpC6jDMIaQjBDVQMkBMMkQ7MYww
+            D9OXYLLiIQHqCmJnFEHrZ7ZneQjFQzZJMz+1q0U+aVQ1jHhHYsC4/iPFbQ4zsOLN
+            h6khfH8KzFVlKYYlQdPRQQJm0GQqMgvcFwLCBURkKKDRLF0gM4y9QLn2Pq1gVwNq
+            gJTKWbOJPFyT8CpPhH3gLqXm3cLwP6zU4U1E7e0FovBgZqd2oDbz8QL6H+aXgIDJ
+            rLJWLl6L2qSYJtFgSOy3vHh1p8sUAXEb4HjmAwEAAaOB5zCB5DAfBgNVHSMEGDAW
+            gBQrlQKlwZ63hFHrVaYqH0fp6HfBAzCBkQYDVR0gBIGJMIGGMIGDBgkrBgEEAYI3
+            WgIwgYMwgYQGCCsGAQUFBwICMHgxeHlub3RpZnkgdGhhdCB0aGUgY29udGVudCBv
+            ZiB0aGUgY2VydGlmaWNhdGUgaXMgbm90IGd1YXJhbnRlZWQgdG8gYmUgdHJ1c3Rl
+            ZC4gQ2VydGlmaWNhdGVzIGFyZSBpc3N1ZWQgYnkgdGhlIENlcnRpZmljYXRlIEF1
+            dGhvcml0eS4wDQYJKoZIhvcNAQEEBQADggEBAAtc4O+4mYneH8k7jKz5j1z9b1f
+            7g5yQh3XQq6qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq
+            XqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqX
+            qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq
+            XqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq
+            XqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqX
+            qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq=
+        </item>
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNV
+            BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
+            aWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDEQMA4G
+            A1UEAxMHQW5kcm9pZDAeFw0wODA4MjEyNzEzMzRaFw0zNjAxMDcyNzEzMzRaMHQx
+            CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3Vu
+            dGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9p
+            ZDEQMA4GA1UEAxMHQW5kcm9pZDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC
+            ggEBAKtWLgDYO6IIrgqWbxJOKdoKrEgih81fIDdQ8EKFhj3J9K1y7B8k5lFQfIB
+            dIQzDX43nvEMSPkqC7jJ8qYjFQFCXyQI8gPwBLpC6jDMIaQjBDVQMkBMMkQ7MYww
+            D9OXYLLiIQHqCmJnFEHrZ7ZneQjFQzZJMz+1q0U+aVQ1jHhHYsC4/iPFbQ4zsOLN
+            h6khfH8KzFVlKYYlQdPRQQJm0GQqMgvcFwLCBURkKKDRLF0gM4y9QLn2Pq1gVwNq
+            gJTKWbOJPFyT8CpPhH3gLqXm3cLwP6zU4U1E7e0FovBgZqd2oDbz8QL6H+aXgIDJ
+            rLJWLl6L2qSYJtFgSOy3vHh1p8sUAXEb4HjmAwEAAaOB5zCB5DAfBgNVHSMEGDAW
+            gBQrlQKlwZ63hFHrVaYqH0fp6HfBAzCBkQYDVR0gBIGJMIGGMIGDBgkrBgEEAYI3
+            WgIwgYMwgYQGCCsGAQUFBwICMHgxeHlub3RpZnkgdGhhdCB0aGUgY29udGVudCBv
+            ZiB0aGUgY2VydGlmaWNhdGUgaXMgbm90IGd1YXJhbnRlZWQgdG8gYmUgdHJ1c3Rl
+            ZC4gQ2VydGlmaWNhdGVzIGFyZSBpc3N1ZWQgYnkgdGhlIENlcnRpZmljYXRlIEF1
+            dGhvcml0eS4wDQYJKoZIhvcNAQEEBQADggEBAAtc4O+4mYneH8k7jKz5j1z9b1f
+            7g5yQh3XQq6qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq
+            XqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqX
+            qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq
+            XqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqX
+            XqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqX
+            qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq=
+        </item>
+    </string-array>
+</resources>
