@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -30,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +71,7 @@ import org.koin.androidx.compose.koinViewModel
 fun ProfileScreen(
     onNavigateToHome: () -> Unit,
     onLogout: () -> Unit,
+    onBack: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
@@ -124,7 +128,8 @@ fun ProfileScreen(
                         onRoleRequest = { role ->
                             viewModel.submitRoleRequest(role)
                         },
-                        onLogout = { viewModel.logout() }
+                        onLogout = { viewModel.logout() },
+                        onBack = onBack
                     )
                 }
             }
@@ -157,7 +162,10 @@ private fun ProfileErrorContent(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) {
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Text(stringResource(R.string.retry))
         }
     }
@@ -172,7 +180,8 @@ private fun ProfileFormContent(
     isSaving: Boolean,
     onSave: (name: String, mobile: String, role: String?) -> Unit,
     onRoleRequest: (String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onBack: () -> Unit = {}
 ) {
     var name by rememberSaveable { mutableStateOf(user.name) }
     var mobile by rememberSaveable { mutableStateOf(user.mobile) }
@@ -189,6 +198,16 @@ private fun ProfileFormContent(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Back button
+        Box(modifier = Modifier.fillMaxWidth()) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back)
+                )
+            }
+        }
+
         // Header
         Text(
             text = if (isNewUser) stringResource(R.string.complete_your_profile) else stringResource(R.string.edit_profile),
@@ -311,7 +330,8 @@ private fun ProfileFormContent(
         if (isNewUser) {
             OutlinedButton(
                 onClick = onLogout,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(stringResource(R.string.logout))
             }
@@ -422,7 +442,8 @@ private fun ExistingUserRoleSection(
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { showRoleDialog = true },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(stringResource(R.string.request_new_role))
                 }
@@ -487,7 +508,8 @@ private fun RoleRequestDialog(
                             }
                         },
                         enabled = !isPending,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(label)
                     }

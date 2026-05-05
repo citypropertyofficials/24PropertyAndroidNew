@@ -13,6 +13,7 @@ interface AuthRepository {
     fun isUserSignedIn(): Boolean
     fun getCurrentUserId(): String?
     fun getCurrentUserEmail(): String?
+    suspend fun getCurrentUserRole(): String?
     suspend fun signInWithGoogle(idToken: String): AuthResult<User>
     suspend fun signOut(): AuthResult<Unit>
     suspend fun getUserData(userId: String): AuthResult<User>
