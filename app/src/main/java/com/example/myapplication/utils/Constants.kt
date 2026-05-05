@@ -22,6 +22,17 @@ object FirebaseConstants {
     const val FIELD_REQUESTED_ROLE = "requestedRole"
     const val FIELD_PREFERRED_LOCATIONS = "preferredLocations"
 
+    // Property fields
+    const val FIELD_IMAGES = "images"
+    const val FIELD_PROPERTY_TYPE = "propertyType"
+    const val FIELD_LISTING_TYPE = "listingType"
+    const val FIELD_PRICE = "price"
+    const val FIELD_RENT = "rent"
+    const val FIELD_LOCATION = "location"
+    const val FIELD_CITY_STATE = "cityState"
+    const val FIELD_IS_ACTIVE = "isActive"
+    const val FIELD_UNIQUE_ID = "uniqueId"
+
     const val STORAGE_PROFILE_IMAGES = "profile-images"
     const val STORAGE_PROPERTY_IMAGES = "property-images"
     const val STORAGE_AUCTION_IMAGES = "auction-images"

@@ -2,6 +2,8 @@ package com.example.myapplication.di
 
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.AuthRepositoryImpl
+import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.data.repository.PropertyRepositoryImpl
 import com.example.myapplication.ui.screens.home.HomeViewModel
 import com.example.myapplication.ui.screens.login.LoginViewModel
 import com.example.myapplication.ui.screens.profile.ProfileViewModel
@@ -17,6 +19,7 @@ val appModule = module {
     single { FirebaseAuth.getInstance() }
     single { FirebaseFirestore.getInstance() }
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
+    singleOf(::PropertyRepositoryImpl) bind PropertyRepository::class
     viewModelOf(::LoginViewModel)
     viewModelOf(::ProfileViewModel)
     viewModelOf(::HomeViewModel)

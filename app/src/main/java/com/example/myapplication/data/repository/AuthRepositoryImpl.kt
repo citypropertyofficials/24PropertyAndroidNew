@@ -27,6 +27,27 @@ class AuthRepositoryImpl(
 
     override fun getCurrentUserEmail(): String? = auth.currentUser?.email
 
+    override suspend fun getCurrentUserRole(): String? {
+        return try {
+            val userId = auth.currentUser?.uid ?: return null
+            val docSnap = firestore.collection(FirebaseConstants.COLLECTION_USERS)
+                .document(userId)
+                .get()
+                .await()
+            val data = docSnap.data ?: return FirebaseConstants.ROLE_USER
+            val role = data[FirebaseConstants.FIELD_ROLE] as? String ?: FirebaseConstants.ROLE_USER
+
+            // Superadmin override
+            val email = auth.currentUser?.email
+            if (superAdminEmails.contains(email)) {
+                return FirebaseConstants.ROLE_SUPERADMIN
+            }
+            role
+        } catch (e: Exception) {
+            FirebaseConstants.ROLE_USER
+        }
+    }
+
     override suspend fun signInWithGoogle(idToken: String): AuthResult<User> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)

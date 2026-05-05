@@ -38,6 +38,7 @@
     <string name="save_changes">Save Changes</string>
     <string name="logout">Logout</string>
     <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
     <string name="retry">Retry</string>
 
     <!-- Profile Messages -->
@@ -57,6 +58,9 @@
     <!-- Home Screen -->
     <string name="welcome_home">Welcome to 24Property!</string>
     <string name="home_placeholder_message">Your property listings will appear here. This is your home dashboard.</string>
+    <string name="no_properties">No Properties Found</string>
+    <string name="no_properties_message">There are no active properties available right now.</string>
+    <string name="error_loading_properties">Failed to load properties</string>
 
     <!-- Favorites Screen -->
     <string name="favorites">Favourites</string>
