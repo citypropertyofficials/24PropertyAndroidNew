@@ -14,10 +14,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,12 +36,14 @@ import com.example.myapplication.ui.common.AppFullScreenLoading
 import com.example.myapplication.ui.common.PropertyCard
 import org.koin.androidx.compose.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsState()
+    val favoriteIds by viewModel.favoriteIds.collectAsState()
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
@@ -65,34 +69,44 @@ fun HomeScreen(
                 )
             }
             is HomeUiState.Loaded -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = { viewModel.refresh() },
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(state.properties, key = { it.id }) { property ->
-                        PropertyCard(property = property)
-                    }
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        items(state.properties, key = { it.id }) { property ->
+                            PropertyCard(
+                                property = property,
+                                isFavorite = favoriteIds.contains(property.id),
+                                onFavoriteClick = { viewModel.toggleFavorite(property.id) }
+                            )
+                        }
 
-                    // Load more indicator
-                    if (state.isLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
+                        // Load more indicator
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
                             }
                         }
-                    }
 
-                    // Load more trigger
-                    if (state.hasMore && !state.isLoadingMore) {
-                        item {
-                            LaunchedEffect(Unit) {
-                                viewModel.loadMore()
+                        // Load more trigger
+                        if (state.hasMore && !state.isLoadingMore) {
+                            item {
+                                LaunchedEffect(Unit) {
+                                    viewModel.loadMore()
+                                }
                             }
                         }
                     }

@@ -2,8 +2,11 @@ package com.example.myapplication.di
 
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.AuthRepositoryImpl
+import com.example.myapplication.data.repository.FavoritesRepository
+import com.example.myapplication.data.repository.FavoritesRepositoryImpl
 import com.example.myapplication.data.repository.PropertyRepository
 import com.example.myapplication.data.repository.PropertyRepositoryImpl
+import com.example.myapplication.ui.screens.favorites.FavoritesViewModel
 import com.example.myapplication.ui.screens.home.HomeViewModel
 import com.example.myapplication.ui.screens.login.LoginViewModel
 import com.example.myapplication.ui.screens.profile.ProfileViewModel
@@ -20,8 +23,10 @@ val appModule = module {
     single { FirebaseFirestore.getInstance() }
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::PropertyRepositoryImpl) bind PropertyRepository::class
+    singleOf(::FavoritesRepositoryImpl) bind FavoritesRepository::class
     viewModelOf(::LoginViewModel)
     viewModelOf(::ProfileViewModel)
     viewModelOf(::HomeViewModel)
+    viewModelOf(::FavoritesViewModel)
     viewModelOf(::SplashViewModel)
 }
