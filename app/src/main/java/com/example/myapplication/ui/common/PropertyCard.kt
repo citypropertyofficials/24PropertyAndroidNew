@@ -26,9 +26,17 @@ import coil.compose.AsyncImage
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.ui.theme.PrimaryStart
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+
 @Composable
 fun PropertyCard(
     property: Property,
+    isFavorite: Boolean = false,
+    onFavoriteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -73,6 +81,22 @@ fun PropertyCard(
                         .align(Alignment.BottomStart)
                 ) {
                     ListingTypeBadge(listingType = property.listingType)
+                }
+
+                // Favorite Icon
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(Color.White.copy(alpha = 0.7f))
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (isFavorite) Color.Red else Color.Gray
+                    )
                 }
             }
 

@@ -1,11 +1,10 @@
-package com.example.myapplication.ui.screens.home
+package com.example.myapplication.ui.screens.favorites
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.data.repository.AuthRepository
-import com.example.myapplication.data.repository.PropertyPageResult
-import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.data.repository.FavoritesRepository
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,33 +16,32 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-sealed class HomeUiState {
-    data object Loading : HomeUiState()
+sealed class FavoritesUiState {
+    data object Loading : FavoritesUiState()
     data class Loaded(
         val properties: List<Property>,
         val isLoadingMore: Boolean = false,
         val hasMore: Boolean = false,
         val isRefreshing: Boolean = false
-    ) : HomeUiState()
-    data class Error(val message: String) : HomeUiState()
-    data object Empty : HomeUiState()
+    ) : FavoritesUiState()
+    data class Error(val message: String) : FavoritesUiState()
+    data object Empty : FavoritesUiState()
 }
 
-sealed class HomeEvent {
-    data class ShowMessage(val message: String) : HomeEvent()
+sealed class FavoritesEvent {
+    data class ShowMessage(val message: String) : FavoritesEvent()
 }
 
-class HomeViewModel(
+class FavoritesViewModel(
     private val authRepository: AuthRepository,
-    private val propertyRepository: PropertyRepository,
-    private val favoritesRepository: com.example.myapplication.data.repository.FavoritesRepository
+    private val favoritesRepository: FavoritesRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
+    val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<HomeEvent>()
-    val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
+    private val _events = MutableSharedFlow<FavoritesEvent>()
+    val events: SharedFlow<FavoritesEvent> = _events.asSharedFlow()
 
     val favoriteIds: StateFlow<Set<String>> = favoritesRepository.observeFavoriteIds()
         .stateIn(
@@ -56,57 +54,57 @@ class HomeViewModel(
     private val pageSize = 10
 
     init {
-        loadProperties(reset = true)
+        loadFavorites(reset = true)
     }
 
     fun refresh() {
         val current = _uiState.value
-        if (current is HomeUiState.Loaded && current.isRefreshing) return
+        if (current is FavoritesUiState.Loaded && current.isRefreshing) return
         viewModelScope.launch {
             val current = _uiState.value
-            if (current is HomeUiState.Loaded) {
+            if (current is FavoritesUiState.Loaded) {
                 _uiState.value = current.copy(isRefreshing = true)
             } else {
-                _uiState.value = HomeUiState.Loading
+                _uiState.value = FavoritesUiState.Loading
             }
             nextCursor = null
             try {
                 val viewerRole = authRepository.getCurrentUserRole() ?: "user"
-                val result = propertyRepository.fetchPropertiesPage(
+                val result = favoritesRepository.fetchUserFavoritesPage(
                     limitCount = pageSize,
                     cursor = null,
                     viewerRole = viewerRole
                 )
                 if (result.items.isEmpty()) {
-                    _uiState.value = HomeUiState.Empty
+                    _uiState.value = FavoritesUiState.Empty
                     return@launch
                 }
                 nextCursor = result.nextCursor
-                _uiState.value = HomeUiState.Loaded(
+                _uiState.value = FavoritesUiState.Loaded(
                     properties = result.items,
                     hasMore = result.hasMore
                 )
             } catch (e: Exception) {
-                val errorMsg = e.message ?: "Unknown error refreshing properties"
+                val errorMsg = e.message ?: "Unknown error refreshing favorites"
                 val prev = _uiState.value
-                if (prev is HomeUiState.Loaded) {
+                if (prev is FavoritesUiState.Loaded) {
                     _uiState.value = prev.copy(isRefreshing = false)
                 } else {
-                    _uiState.value = HomeUiState.Error(errorMsg)
+                    _uiState.value = FavoritesUiState.Error(errorMsg)
                 }
-                _events.emit(HomeEvent.ShowMessage("Refresh failed: $errorMsg"))
+                _events.emit(FavoritesEvent.ShowMessage("Refresh failed: $errorMsg"))
             }
         }
     }
 
-    fun loadProperties(reset: Boolean = false) {
+    fun loadFavorites(reset: Boolean = false) {
         viewModelScope.launch {
             if (reset) {
-                _uiState.value = HomeUiState.Loading
+                _uiState.value = FavoritesUiState.Loading
                 nextCursor = null
             } else {
                 val current = _uiState.value
-                if (current is HomeUiState.Loaded) {
+                if (current is FavoritesUiState.Loaded) {
                     _uiState.value = current.copy(isLoadingMore = true)
                 }
             }
@@ -114,27 +112,27 @@ class HomeViewModel(
             try {
                 val viewerRole = authRepository.getCurrentUserRole() ?: "user"
 
-                val result = propertyRepository.fetchPropertiesPage(
+                val result = favoritesRepository.fetchUserFavoritesPage(
                     limitCount = pageSize,
                     cursor = if (reset) null else nextCursor,
                     viewerRole = viewerRole
                 )
 
                 if (result.items.isEmpty() && reset) {
-                    _uiState.value = HomeUiState.Empty
+                    _uiState.value = FavoritesUiState.Empty
                     return@launch
                 }
 
                 nextCursor = result.nextCursor
 
                 if (reset) {
-                    _uiState.value = HomeUiState.Loaded(
+                    _uiState.value = FavoritesUiState.Loaded(
                         properties = result.items,
                         hasMore = result.hasMore
                     )
                 } else {
                     val current = _uiState.value
-                    if (current is HomeUiState.Loaded) {
+                    if (current is FavoritesUiState.Loaded) {
                         _uiState.value = current.copy(
                             properties = current.properties + result.items,
                             isLoadingMore = false,
@@ -143,24 +141,23 @@ class HomeViewModel(
                     }
                 }
             } catch (e: Exception) {
-                val errorMsg = e.message ?: "Unknown error loading properties"
-                _uiState.value = HomeUiState.Error(errorMsg)
-                _events.emit(HomeEvent.ShowMessage("Error: $errorMsg"))
+                val errorMsg = e.message ?: "Unknown error loading favorites"
+                _uiState.value = FavoritesUiState.Error(errorMsg)
+                _events.emit(FavoritesEvent.ShowMessage("Error: $errorMsg"))
             }
         }
     }
 
     fun loadMore() {
         val current = _uiState.value
-        if (current is HomeUiState.Loaded && current.hasMore && !current.isLoadingMore) {
-            loadProperties(reset = false)
+        if (current is FavoritesUiState.Loaded && current.hasMore && !current.isLoadingMore) {
+            loadFavorites(reset = false)
         }
     }
 
     fun retry() {
-        loadProperties(reset = true)
+        loadFavorites(reset = true)
     }
-
 
     fun toggleFavorite(propertyId: String) {
         viewModelScope.launch {
@@ -172,7 +169,7 @@ class HomeViewModel(
                     favoritesRepository.addToFavorites(propertyId)
                 }
             } catch (e: Exception) {
-                _events.emit(HomeEvent.ShowMessage("Failed to update favorites"))
+                _events.emit(FavoritesEvent.ShowMessage("Failed to update favorites"))
             }
         }
     }
