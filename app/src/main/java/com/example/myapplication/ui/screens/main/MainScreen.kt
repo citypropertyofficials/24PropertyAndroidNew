@@ -43,7 +43,8 @@ sealed class BottomNavItem(
 @Composable
 fun MainScreen(
     onNavigateToProfile: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToPropertyDetails: (String) -> Unit
 ) {
     val navItems = listOf(
         BottomNavItem.Home,
@@ -81,8 +82,8 @@ fun MainScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedIndex) {
-                0 -> HomeScreen()
-                1 -> FavoritesScreen()
+                0 -> HomeScreen(onNavigateToPropertyDetails = onNavigateToPropertyDetails)
+                1 -> FavoritesScreen(onNavigateToPropertyDetails = onNavigateToPropertyDetails)
                 2 -> AuctionsScreen()
                 3 -> MoreScreen(
                     onNavigateToProfile = onNavigateToProfile,

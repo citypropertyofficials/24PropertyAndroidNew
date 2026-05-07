@@ -10,6 +10,7 @@ import com.example.myapplication.ui.screens.favorites.FavoritesViewModel
 import com.example.myapplication.ui.screens.home.HomeViewModel
 import com.example.myapplication.ui.screens.login.LoginViewModel
 import com.example.myapplication.ui.screens.profile.ProfileViewModel
+import com.example.myapplication.ui.screens.propertydetails.PropertyDetailsViewModel
 import com.example.myapplication.ui.screens.splash.SplashViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -29,4 +30,5 @@ val appModule = module {
     viewModelOf(::HomeViewModel)
     viewModelOf(::FavoritesViewModel)
     viewModelOf(::SplashViewModel)
+    viewModelOf(::PropertyDetailsViewModel)
 }

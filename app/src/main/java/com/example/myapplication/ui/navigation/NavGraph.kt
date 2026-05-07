@@ -3,11 +3,14 @@ package com.example.myapplication.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.myapplication.ui.screens.login.LoginScreen
 import com.example.myapplication.ui.screens.main.MainScreen
 import com.example.myapplication.ui.screens.profile.ProfileScreen
+import com.example.myapplication.ui.screens.propertydetails.PropertyDetailsScreen
 import com.example.myapplication.ui.screens.splash.SplashScreen
 
 @Composable
@@ -84,7 +87,23 @@ fun NavGraph(
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Main.route) { inclusive = true }
                     }
+                },
+                onNavigateToPropertyDetails = { propertyId ->
+                    navController.navigate(Screen.PropertyDetails.createRoute(propertyId))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.PropertyDetails.route,
+            arguments = listOf(
+                navArgument("propertyId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val propertyId = backStackEntry.arguments?.getString("propertyId") ?: ""
+            PropertyDetailsScreen(
+                propertyId = propertyId,
+                onBack = { navController.popBackStack() }
             )
         }
     }
