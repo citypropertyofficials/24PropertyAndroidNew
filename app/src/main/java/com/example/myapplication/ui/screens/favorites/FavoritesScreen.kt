@@ -42,6 +42,7 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
+    onNavigateToPropertyDetails: (String) -> Unit = {},
     viewModel: FavoritesViewModel = koinViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -86,7 +87,8 @@ fun FavoritesScreen(
                             PropertyCard(
                                 property = property,
                                 isFavorite = favoriteIds.contains(property.id),
-                                onFavoriteClick = { viewModel.toggleFavorite(property.id) }
+                                onFavoriteClick = { viewModel.toggleFavorite(property.id) },
+                                onClick = { onNavigateToPropertyDetails(property.id) }
                             )
                         }
 
