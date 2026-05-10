@@ -44,7 +44,8 @@ sealed class BottomNavItem(
 fun MainScreen(
     onNavigateToProfile: () -> Unit,
     onLogout: () -> Unit,
-    onNavigateToPropertyDetails: (String) -> Unit
+    onNavigateToPropertyDetails: (String) -> Unit,
+    onNavigateToDashboard: () -> Unit
 ) {
     val navItems = listOf(
         BottomNavItem.Home,
@@ -87,6 +88,7 @@ fun MainScreen(
                 2 -> AuctionsScreen()
                 3 -> MoreScreen(
                     onNavigateToProfile = onNavigateToProfile,
+                    onNavigateToDashboard = onNavigateToDashboard,
                     onLogout = onLogout
                 )
             }

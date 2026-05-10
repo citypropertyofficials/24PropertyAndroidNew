@@ -14,23 +14,31 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.koin.androidx.compose.koinViewModel
 import com.example.myapplication.R
+import com.example.myapplication.utils.FirebaseConstants
 
 @Composable
 fun MoreScreen(
     onNavigateToProfile: () -> Unit,
-    onLogout: () -> Unit
+    onNavigateToDashboard: () -> Unit,
+    onLogout: () -> Unit,
+    viewModel: MoreViewModel = koinViewModel()
 ) {
     val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -49,6 +57,15 @@ fun MoreScreen(
             onClick = onNavigateToProfile
         )
         Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+        if (!uiState.isLoading && (uiState.userRole == FirebaseConstants.ROLE_SUPERADMIN || uiState.userRole == FirebaseConstants.ROLE_DEVELOPER)) {
+            MoreMenuItem(
+                icon = Icons.Default.Lock,
+                label = "Dashboard",
+                onClick = onNavigateToDashboard
+            )
+            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
 
         MoreMenuItem(
             icon = Icons.Default.Settings,

@@ -116,7 +116,7 @@ class PropertyRepositoryImpl(
         val data = doc.data ?: return null
 
         val images = (data[FirebaseConstants.FIELD_IMAGES] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-        val amenities = (data["amenities"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        val amenities = (data[FirebaseConstants.FIELD_AMENITIES] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
         val createdAt = data[FirebaseConstants.FIELD_CREATED_AT] as? Timestamp
         val updatedAt = data[FirebaseConstants.FIELD_UPDATED_AT] as? Timestamp
 
@@ -140,97 +140,97 @@ class PropertyRepositoryImpl(
             owner = str(data, FirebaseConstants.FIELD_OWNER),
 
             // Description & Amenities
-            description = str(data, "description"),
+            description = str(data, FirebaseConstants.FIELD_DESCRIPTION),
             amenities = amenities,
 
             // Location sub-fields
-            buildingName = str(data, "buildingName"),
-            locality = str(data, "locality"),
-            zoneType = str(data, "zoneType"),
-            locationHub = str(data, "locationHub"),
+            buildingName = str(data, FirebaseConstants.FIELD_BUILDING_NAME),
+            locality = str(data, FirebaseConstants.FIELD_LOCALITY),
+            zoneType = str(data, FirebaseConstants.FIELD_ZONE_TYPE),
+            locationHub = str(data, FirebaseConstants.FIELD_LOCATION_HUB),
 
             // Type & Category
-            residentialType = str(data, "residentialType"),
-            bhkConfig = str(data, "bhkConfig"),
-            commercialType = str(data, "commercialType"),
-            industrialType = str(data, "industrialType"),
-            landType = str(data, "landType"),
+            residentialType = str(data, FirebaseConstants.FIELD_RESIDENTIAL_TYPE),
+            bhkConfig = str(data, FirebaseConstants.FIELD_BHK_CONFIG),
+            commercialType = str(data, FirebaseConstants.FIELD_COMMERCIAL_TYPE),
+            industrialType = str(data, FirebaseConstants.FIELD_INDUSTRIAL_TYPE),
+            landType = str(data, FirebaseConstants.FIELD_LAND_TYPE),
 
             // Status & Availability
-            possessionStatus = str(data, "possessionStatus"),
-            availableFrom = str(data, "availableFrom"),
+            possessionStatus = str(data, FirebaseConstants.FIELD_POSSESSION_STATUS),
+            availableFrom = str(data, FirebaseConstants.FIELD_AVAILABLE_FROM),
 
             // Property & Legal
-            propertyCondition = str(data, "propertyCondition"),
-            ownership = str(data, "ownership"),
-            plotArea = str(data, "plotArea"),
-            builtUpArea = str(data, "builtUpArea"),
-            carpetArea = str(data, "carpetArea"),
-            totalConstructionArea = str(data, "totalConstructionArea"),
-            frontage = str(data, "frontage"),
-            roadAccess = str(data, "roadAccess"),
+            propertyCondition = str(data, FirebaseConstants.FIELD_PROPERTY_CONDITION),
+            ownership = str(data, FirebaseConstants.FIELD_OWNERSHIP),
+            plotArea = str(data, FirebaseConstants.FIELD_PLOT_AREA),
+            builtUpArea = str(data, FirebaseConstants.FIELD_BUILT_UP_AREA),
+            carpetArea = str(data, FirebaseConstants.FIELD_CARPET_AREA),
+            totalConstructionArea = str(data, FirebaseConstants.FIELD_TOTAL_CONSTRUCTION_AREA),
+            frontage = str(data, FirebaseConstants.FIELD_FRONTAGE),
+            roadAccess = str(data, FirebaseConstants.FIELD_ROAD_ACCESS),
 
             // Residential
-            propertyAge = str(data, "propertyAge"),
-            floorNumber = str(data, "floorNumber"),
-            bathrooms = str(data, "bathrooms"),
-            balconies = str(data, "balconies"),
-            furnishing = str(data, "furnishing"),
-            coveredParking = str(data, "coveredParking"),
-            openParking = str(data, "openParking"),
-            parkingCharges = str(data, "parkingCharges"),
-            tenantType = str(data, "tenantType"),
-            petFriendly = str(data, "petFriendly"),
-            maintenanceCharges = str(data, "maintenanceCharges"),
-            servantRoom = str(data, "servantRoom"),
-            amenitiesText = str(data, "amenitiesText"),
-            residentsCount = str(data, "residentsCount"),
+            propertyAge = str(data, FirebaseConstants.FIELD_PROPERTY_AGE),
+            floorNumber = str(data, FirebaseConstants.FIELD_FLOOR_NUMBER),
+            bathrooms = str(data, FirebaseConstants.FIELD_BATHROOMS),
+            balconies = str(data, FirebaseConstants.FIELD_BALCONIES),
+            furnishing = str(data, FirebaseConstants.FIELD_FURNISHING),
+            coveredParking = str(data, FirebaseConstants.FIELD_COVERED_PARKING),
+            openParking = str(data, FirebaseConstants.FIELD_OPEN_PARKING),
+            parkingCharges = str(data, FirebaseConstants.FIELD_PARKING_CHARGES),
+            tenantType = str(data, FirebaseConstants.FIELD_TENANT_TYPE),
+            petFriendly = str(data, FirebaseConstants.FIELD_PET_FRIENDLY),
+            maintenanceCharges = str(data, FirebaseConstants.FIELD_MAINTENANCE_CHARGES),
+            servantRoom = str(data, FirebaseConstants.FIELD_SERVANT_ROOM),
+            amenitiesText = str(data, FirebaseConstants.FIELD_AMENITIES_TEXT),
+            residentsCount = str(data, FirebaseConstants.FIELD_RESIDENTS_COUNT),
 
             // Commercial / Industrial shared
-            parkingType = str(data, "parkingType"),
-            washroomType = str(data, "washroomType"),
+            parkingType = str(data, FirebaseConstants.FIELD_PARKING_TYPE),
+            washroomType = str(data, FirebaseConstants.FIELD_WASHROOM_TYPE),
 
             // Industrial
-            shedHeight = str(data, "shedHeight"),
-            shedSideWallHeight = str(data, "shedSideWallHeight"),
-            plotDimensions = str(data, "plotDimensions"),
-            shedBuiltUpArea = str(data, "shedBuiltUpArea"),
-            builtUpConstructionArea = str(data, "builtUpConstructionArea"),
-            electricityLoad = str(data, "electricityLoad"),
-            waterAvailable = str(data, "waterAvailable"),
-            preLeased = str(data, "preLeased"),
-            preRented = str(data, "preRented"),
+            shedHeight = str(data, FirebaseConstants.FIELD_SHED_HEIGHT),
+            shedSideWallHeight = str(data, FirebaseConstants.FIELD_SHED_SIDE_WALL_HEIGHT),
+            plotDimensions = str(data, FirebaseConstants.FIELD_PLOT_DIMENSIONS),
+            shedBuiltUpArea = str(data, FirebaseConstants.FIELD_SHED_BUILT_UP_AREA),
+            builtUpConstructionArea = str(data, FirebaseConstants.FIELD_BUILT_UP_CONSTRUCTION_AREA),
+            electricityLoad = str(data, FirebaseConstants.FIELD_ELECTRICITY_LOAD),
+            waterAvailable = str(data, FirebaseConstants.FIELD_WATER_AVAILABLE),
+            preLeased = str(data, FirebaseConstants.FIELD_PRE_LEASED),
+            preRented = str(data, FirebaseConstants.FIELD_PRE_RENTED),
 
             // Land
-            areaAcres = str(data, "areaAcres"),
-            plotLength = str(data, "plotLength"),
-            plotBreadth = str(data, "plotBreadth"),
-            landFacing = str(data, "landFacing"),
-            roadWidth = str(data, "roadWidth"),
-            landStatus = str(data, "landStatus"),
+            areaAcres = str(data, FirebaseConstants.FIELD_AREA_ACRES),
+            plotLength = str(data, FirebaseConstants.FIELD_PLOT_LENGTH),
+            plotBreadth = str(data, FirebaseConstants.FIELD_PLOT_BREADTH),
+            landFacing = str(data, FirebaseConstants.FIELD_LAND_FACING),
+            roadWidth = str(data, FirebaseConstants.FIELD_ROAD_WIDTH),
+            landStatus = str(data, FirebaseConstants.FIELD_LAND_STATUS),
 
             // Floors & Elevation
-            yourFloor = str(data, "yourFloor"),
-            totalFloors = str(data, "totalFloors"),
-            staircases = str(data, "staircases"),
-            passengerLift = str(data, "passengerLift"),
-            serviceLift = str(data, "serviceLift"),
+            yourFloor = str(data, FirebaseConstants.FIELD_YOUR_FLOOR),
+            totalFloors = str(data, FirebaseConstants.FIELD_TOTAL_FLOORS),
+            staircases = str(data, FirebaseConstants.FIELD_STAIRCASES),
+            passengerLift = str(data, FirebaseConstants.FIELD_PASSENGER_LIFT),
+            serviceLift = str(data, FirebaseConstants.FIELD_SERVICE_LIFT),
 
             // Facing
-            facing = str(data, "facing"),
-            rearFacing = str(data, "rearFacing"),
-            roadFacing = str(data, "roadFacing"),
+            facing = str(data, FirebaseConstants.FIELD_FACING),
+            rearFacing = str(data, FirebaseConstants.FIELD_REAR_FACING),
+            roadFacing = str(data, FirebaseConstants.FIELD_ROAD_FACING),
 
             // Lease & Financials
-            rentNegotiable = str(data, "rentNegotiable"),
-            securityDeposit = str(data, "securityDeposit"),
-            rentIncrease = str(data, "rentIncrease"),
-            lockInPeriod = str(data, "lockInPeriod"),
+            rentNegotiable = str(data, FirebaseConstants.FIELD_RENT_NEGOTIABLE),
+            securityDeposit = str(data, FirebaseConstants.FIELD_SECURITY_DEPOSIT),
+            rentIncrease = str(data, FirebaseConstants.FIELD_RENT_INCREASE),
+            lockInPeriod = str(data, FirebaseConstants.FIELD_LOCK_IN_PERIOD),
 
             // Charges & Inclusions
-            dampUpsIncluded = str(data, "dampUpsIncluded"),
-            electricityIncluded = str(data, "electricityIncluded"),
-            waterChargesIncluded = str(data, "waterChargesIncluded"),
+            dampUpsIncluded = str(data, FirebaseConstants.FIELD_DAMP_UPS_INCLUDED),
+            electricityIncluded = str(data, FirebaseConstants.FIELD_ELECTRICITY_INCLUDED),
+            waterChargesIncluded = str(data, FirebaseConstants.FIELD_WATER_CHARGES_INCLUDED),
         )
     }
 

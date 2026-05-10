@@ -16,8 +16,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
-import org.koin.dsl.bind
+import com.example.myapplication.data.repository.DashboardRepository
+import com.example.myapplication.data.repository.DashboardRepositoryImpl
 import org.koin.dsl.module
+import com.example.myapplication.ui.screens.dashboard.DashboardViewModel
+import com.example.myapplication.ui.screens.more.MoreViewModel
+import org.koin.dsl.bind
 
 val appModule = module {
     single { FirebaseAuth.getInstance() }
@@ -25,10 +29,13 @@ val appModule = module {
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::PropertyRepositoryImpl) bind PropertyRepository::class
     singleOf(::FavoritesRepositoryImpl) bind FavoritesRepository::class
+    singleOf(::DashboardRepositoryImpl) bind DashboardRepository::class
     viewModelOf(::LoginViewModel)
     viewModelOf(::ProfileViewModel)
     viewModelOf(::HomeViewModel)
     viewModelOf(::FavoritesViewModel)
     viewModelOf(::SplashViewModel)
     viewModelOf(::PropertyDetailsViewModel)
+    viewModelOf(::DashboardViewModel)
+    viewModelOf(::MoreViewModel)
 }

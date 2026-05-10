@@ -42,8 +42,8 @@ class FavoritesRepositoryImpl(
         val favoritesSnapshot = firestore
             .collection(FirebaseConstants.COLLECTION_USERS)
             .document(userId)
-            .collection("favorites")
-            .orderBy("addedAt", Query.Direction.DESCENDING)
+            .collection(FirebaseConstants.COLLECTION_FAVORITES)
+            .orderBy(FirebaseConstants.FIELD_ADDED_AT, Query.Direction.DESCENDING)
             .get()
             .await()
 
@@ -109,12 +109,12 @@ class FavoritesRepositoryImpl(
         val userId = auth.currentUser?.uid ?: return false
         try {
             val data = hashMapOf(
-                "addedAt" to Timestamp.now()
+                FirebaseConstants.FIELD_ADDED_AT to Timestamp.now()
             )
             firestore
                 .collection(FirebaseConstants.COLLECTION_USERS)
                 .document(userId)
-                .collection("favorites")
+                .collection(FirebaseConstants.COLLECTION_FAVORITES)
                 .document(propertyId)
                 .set(data)
                 .await()
@@ -131,7 +131,7 @@ class FavoritesRepositoryImpl(
             firestore
                 .collection(FirebaseConstants.COLLECTION_USERS)
                 .document(userId)
-                .collection("favorites")
+                .collection(FirebaseConstants.COLLECTION_FAVORITES)
                 .document(propertyId)
                 .delete()
                 .await()
@@ -148,7 +148,7 @@ class FavoritesRepositoryImpl(
             val doc = firestore
                 .collection(FirebaseConstants.COLLECTION_USERS)
                 .document(userId)
-                .collection("favorites")
+                .collection(FirebaseConstants.COLLECTION_FAVORITES)
                 .document(propertyId)
                 .get()
                 .await()
@@ -202,7 +202,7 @@ class FavoritesRepositoryImpl(
         val listener = firestore
             .collection(FirebaseConstants.COLLECTION_USERS)
             .document(userId)
-            .collection("favorites")
+            .collection(FirebaseConstants.COLLECTION_FAVORITES)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     return@addSnapshotListener
