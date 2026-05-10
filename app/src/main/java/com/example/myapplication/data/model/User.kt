@@ -9,6 +9,7 @@ data class User(
     val photoUrl: String = "",
     val mobile: String = "",
     val role: String = "user",
+    val blocked: Boolean = false,
     val maxPropertiesAllowed: Int? = null,
     val preferredLocations: List<String> = emptyList(),
     val createdAt: Timestamp? = null,

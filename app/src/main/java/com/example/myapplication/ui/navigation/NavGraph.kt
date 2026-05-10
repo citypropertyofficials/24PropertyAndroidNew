@@ -90,7 +90,16 @@ fun NavGraph(
                 },
                 onNavigateToPropertyDetails = { propertyId ->
                     navController.navigate(Screen.PropertyDetails.createRoute(propertyId))
+                },
+                onNavigateToDashboard = {
+                    navController.navigate(Screen.Dashboard.route)
                 }
+            )
+        }
+
+        composable(route = Screen.Dashboard.route) {
+            com.example.myapplication.ui.screens.dashboard.DashboardScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 
