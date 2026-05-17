@@ -17,6 +17,7 @@ data class Property(
     val rent: Double = 0.0,
     val location: String = "",
     val cityState: String = "",
+    val status: String = "",
     val isActive: Boolean = true,
     val ownerRole: String = "",
     val uniqueId: String = "",

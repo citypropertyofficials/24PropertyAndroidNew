@@ -1,9 +1,11 @@
 package com.example.myapplication.data.repository
 
+import android.util.Log
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.utils.FirebaseConstants
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -14,11 +16,21 @@ interface PropertyRepository {
         viewerRole: String
     ): PropertyPageResult
 
+    suspend fun fetchUserPropertiesPage(
+        userId: String,
+        limitCount: Int,
+        cursor: DocumentSnapshot?,
+        listingType: String,
+        viewerRole: String
+    ): PropertyPageResult
+
     /** Fetch a single property by ID for the details screen. Returns null if not found. */
     suspend fun fetchPropertyById(propertyId: String): Property?
 
     /** Fetch the mobile number of the property owner. Returns null if not found. */
     suspend fun getOwnerMobileNumber(ownerUid: String): String?
+
+    suspend fun deleteProperty(propertyId: String, deletedBy: String)
 }
 
 data class PropertyPageResult(
@@ -30,6 +42,10 @@ data class PropertyPageResult(
 class PropertyRepositoryImpl(
     private val firestore: FirebaseFirestore
 ) : PropertyRepository {
+
+    private companion object {
+        const val TAG = "MyPropertiesRepo"
+    }
 
     override suspend fun fetchPropertiesPage(
         limitCount: Int,
@@ -72,6 +88,101 @@ class PropertyRepositoryImpl(
             allDocs.find { it.id == pageItems.last().id }
         } else null
 
+        Log.d(
+            TAG,
+            "pageResult: pageItems=${pageItems.size} hasMore=$hasMore nextCursor=${nextCursor?.id}"
+        )
+
+        return PropertyPageResult(
+            items = pageItems,
+            nextCursor = nextCursor,
+            hasMore = hasMore
+        )
+    }
+
+    override suspend fun fetchUserPropertiesPage(
+        userId: String,
+        limitCount: Int,
+        cursor: DocumentSnapshot?,
+        listingType: String,
+        viewerRole: String
+    ): PropertyPageResult {
+        Log.d(
+            TAG,
+            "fetchUserPropertiesPage: userId=$userId filter=$listingType viewerRole=$viewerRole cursor=${cursor?.id} limit=$limitCount"
+        )
+
+        var query = firestore
+            .collection(FirebaseConstants.COLLECTION_PROPERTIES)
+            .whereEqualTo(FirebaseConstants.FIELD_OWNER, userId)
+            .whereEqualTo(FirebaseConstants.FIELD_IS_ACTIVE, true)
+
+        query = when (listingType) {
+            FirebaseConstants.PROPERTY_STATUS_DRAFT -> {
+                query.whereEqualTo(
+                    FirebaseConstants.FIELD_STATUS,
+                    FirebaseConstants.PROPERTY_STATUS_DRAFT
+                )
+            }
+            "rent", "sale" -> {
+                query.whereEqualTo(FirebaseConstants.FIELD_LISTING_TYPE, listingType)
+            }
+            else -> query
+        }
+
+        val snapshot = query.get().await()
+        val allDocs = snapshot.documents
+
+        Log.d(TAG, "fetchUserPropertiesPage: rawMatchedDocs=${allDocs.size}")
+        allDocs.forEach { doc ->
+            val data = doc.data.orEmpty()
+            Log.d(
+                TAG,
+                "rawDoc id=${doc.id} owner=${data[FirebaseConstants.FIELD_OWNER]} userId=${data[FirebaseConstants.FIELD_USER_ID]} ownerRole=${data[FirebaseConstants.FIELD_OWNER_ROLE]} isActive=${data[FirebaseConstants.FIELD_IS_ACTIVE]} status=${data[FirebaseConstants.FIELD_STATUS]} listingType=${data[FirebaseConstants.FIELD_LISTING_TYPE]}"
+            )
+        }
+
+        var properties = allDocs.mapNotNull { doc ->
+            mapToProperty(doc)
+        }.filter { property ->
+            property.owner == userId || canAccessDeveloperOwnedContent(property.ownerRole, viewerRole)
+        }
+
+        Log.d(TAG, "afterRoleFilter: properties=${properties.size}")
+
+        if (
+            listingType == "all" ||
+            listingType == "rent" ||
+            listingType == "sale"
+        ) {
+            properties = properties.filter { property ->
+                property.status != FirebaseConstants.PROPERTY_STATUS_DRAFT
+            }
+            Log.d(TAG, "afterDraftFilter: properties=${properties.size}")
+        }
+
+        val sortedProperties = properties.sortedByDescending { it.createdAt?.seconds ?: 0L }
+        sortedProperties.forEach { property ->
+            Log.d(
+                TAG,
+                "sortedProperty id=${property.id} owner=${property.owner} ownerRole=${property.ownerRole} status=${property.status} createdAt=${property.createdAt?.seconds}"
+            )
+        }
+
+        val startIndex = if (cursor != null) {
+            val cursorIndex = sortedProperties.indexOfFirst { it.id == cursor.id }
+            if (cursorIndex >= 0) cursorIndex + 1 else 0
+        } else null
+
+        val safeStartIndex = startIndex ?: 0
+        val endIndex = minOf(safeStartIndex + limitCount, sortedProperties.size)
+        val pageItems = sortedProperties.subList(safeStartIndex, endIndex)
+        val hasMore = endIndex < sortedProperties.size
+
+        val nextCursor = if (hasMore && pageItems.isNotEmpty()) {
+            allDocs.find { it.id == pageItems.last().id }
+        } else null
+
         return PropertyPageResult(
             items = pageItems,
             nextCursor = nextCursor,
@@ -108,6 +219,20 @@ class PropertyRepositoryImpl(
         }
     }
 
+    override suspend fun deleteProperty(propertyId: String, deletedBy: String) {
+        firestore
+            .collection(FirebaseConstants.COLLECTION_PROPERTIES)
+            .document(propertyId)
+            .update(
+                mapOf(
+                    FirebaseConstants.FIELD_IS_ACTIVE to false,
+                    FirebaseConstants.FIELD_DELETED_AT to FieldValue.serverTimestamp(),
+                    FirebaseConstants.FIELD_DELETED_BY to deletedBy
+                )
+            )
+            .await()
+    }
+
     private fun str(data: Map<String, Any?>, key: String): String =
         data[key] as? String ?: ""
 
@@ -130,6 +255,7 @@ class PropertyRepositoryImpl(
             rent = (data[FirebaseConstants.FIELD_RENT] as? Number)?.toDouble() ?: 0.0,
             location = str(data, FirebaseConstants.FIELD_LOCATION),
             cityState = str(data, FirebaseConstants.FIELD_CITY_STATE),
+            status = str(data, FirebaseConstants.FIELD_STATUS),
             isActive = data[FirebaseConstants.FIELD_IS_ACTIVE] as? Boolean ?: true,
             ownerRole = str(data, FirebaseConstants.FIELD_OWNER_ROLE),
             uniqueId = str(data, FirebaseConstants.FIELD_UNIQUE_ID),

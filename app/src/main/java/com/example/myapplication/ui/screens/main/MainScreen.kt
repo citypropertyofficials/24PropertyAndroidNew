@@ -45,7 +45,8 @@ fun MainScreen(
     onNavigateToProfile: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToPropertyDetails: (String) -> Unit,
-    onNavigateToDashboard: () -> Unit
+    onNavigateToDashboard: () -> Unit,
+    onNavigateToMyProperties: () -> Unit
 ) {
     val navItems = listOf(
         BottomNavItem.Home,
@@ -89,6 +90,7 @@ fun MainScreen(
                 3 -> MoreScreen(
                     onNavigateToProfile = onNavigateToProfile,
                     onNavigateToDashboard = onNavigateToDashboard,
+                    onNavigateToMyProperties = onNavigateToMyProperties,
                     onLogout = onLogout
                 )
             }

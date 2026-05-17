@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Lock
@@ -34,6 +35,7 @@ import com.example.myapplication.utils.FirebaseConstants
 fun MoreScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToMyProperties: () -> Unit,
     onLogout: () -> Unit,
     viewModel: MoreViewModel = koinViewModel()
 ) {
@@ -55,6 +57,13 @@ fun MoreScreen(
             icon = Icons.Default.AccountCircle,
             label = stringResource(R.string.profile),
             onClick = onNavigateToProfile
+        )
+        Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+        MoreMenuItem(
+            icon = Icons.Default.Home,
+            label = stringResource(R.string.my_properties),
+            onClick = onNavigateToMyProperties
         )
         Divider(modifier = Modifier.padding(horizontal = 16.dp))
 
