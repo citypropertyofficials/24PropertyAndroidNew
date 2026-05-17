@@ -27,114 +27,61 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.data.model.DashboardStats
 import com.example.myapplication.data.model.PropertyRequest
 import com.example.myapplication.data.model.RoleRequest
 import com.example.myapplication.data.model.User
+import com.example.myapplication.ui.theme.AccentColor
+import com.example.myapplication.ui.theme.DangerColor
+import com.example.myapplication.ui.theme.GoldStart
+import com.example.myapplication.ui.theme.PrimaryEnd
+import com.example.myapplication.ui.theme.PrimaryStart
+import com.example.myapplication.ui.theme.TextSecondary
+import com.example.myapplication.utils.FirebaseConstants
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
-fun DashboardOverview(stats: DashboardStats) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "System Overview",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            StatCard(
-                title = "Total Users",
-                value = stats.totalUsers.toString(),
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            StatCard(
-                title = "Active Users",
-                value = stats.activeUsers.toString(),
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            StatCard(
-                title = "Blocked Users",
-                value = stats.blockedUsers.toString(),
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            )
-            StatCard(
-                title = "Total Requests",
-                value = stats.totalRequests.toString(),
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    containerColor: Color,
-    contentColor: Color
-) {
-    Card(
-        modifier = modifier.height(110.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
 fun UsersSection(
+    stats: DashboardStats,
     users: List<User>,
     onUserClick: (User) -> Unit,
     onToggleBlock: (String) -> Unit,
     onFilterChange: (String) -> Unit
 ) {
     var filter by remember { mutableStateOf("all") }
-    Column(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item {
+            UsersSummarySection(stats = stats)
+        }
+
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "User management",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "View account status, filter users quickly, and open full details to manage access.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+        }
+
+        item {
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,13 +93,116 @@ fun UsersSection(
             item { FilterChip(selected = filter == "active", onClick = { filter = "active"; onFilterChange("active") }, label = { Text("Active") }) }
             item { FilterChip(selected = filter == "blocked", onClick = { filter = "blocked"; onFilterChange("blocked") }, label = { Text("Blocked") }) }
         }
+        }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp)
+        items(users) { user ->
+            UserCard(user = user, onClick = { onUserClick(user) })
+        }
+    }
+}
+
+@Composable
+private fun UsersSummarySection(stats: DashboardStats) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Users overview",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Text(
+            text = "A quick pulse of the user base and pending actions, all in the same place.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(users) { user ->
-                UserCard(user = user, onClick = { onUserClick(user) })
+            DashboardMetricCard(
+                title = "Total Users",
+                value = stats.totalUsers.toString(),
+                accentColor = PrimaryStart,
+                modifier = Modifier.weight(1f)
+            )
+            DashboardMetricCard(
+                title = "Active Users",
+                value = stats.activeUsers.toString(),
+                accentColor = AccentColor,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            DashboardMetricCard(
+                title = "Blocked Users",
+                value = stats.blockedUsers.toString(),
+                accentColor = DangerColor,
+                modifier = Modifier.weight(1f)
+            )
+            DashboardMetricCard(
+                title = "Total Requests",
+                value = stats.totalRequests.toString(),
+                accentColor = GoldStart,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardMetricCard(
+    title: String,
+    value: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.height(116.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 44.dp, height = 6.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(accentColor.copy(alpha = 0.9f))
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -460,12 +510,41 @@ fun RoleRequestsSection(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 12.dp)
         ) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Role requests",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Review pending, approved, and rejected requests with the requester details.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+            }
+
             items(requests) { request ->
+                val statusColors = requestStatusColors(request.status)
+                val requestDate = request.createdAt?.toDate()?.let {
+                    SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it)
+                } ?: "Unknown"
+                val displayName = request.userName.ifEmpty {
+                    request.userEmail.ifEmpty { "Unknown User" }
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -474,35 +553,65 @@ fun RoleRequestsSection(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = request.userName.ifEmpty { request.userEmail },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = displayName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = request.userEmail.ifEmpty { request.userId },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                             Badge(
                                 text = request.status.uppercase(),
-                                containerColor = if (request.status == "pending") MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (request.status == "pending") MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                containerColor = statusColors.first,
+                                contentColor = statusColors.second
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = request.userEmail,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Badge(
+                                text = "Current: ${request.currentUserRole.uppercase()}",
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Badge(
+                                text = "Requested: ${request.requestedRole.uppercase()}",
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         Text(
-                            text = "Requested Role: ${request.requestedRole.uppercase()}",
+                            text = "Request Date: $requestDate",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "Reason: ${request.reason}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+
+                        if (request.reason.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Reason: ${request.reason}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         
                         if (request.status == "pending") {
                             Spacer(modifier = Modifier.height(16.dp))
@@ -534,6 +643,13 @@ fun RoleRequestsSection(
             }
         }
     }
+}
+
+@Composable
+private fun requestStatusColors(status: String): Pair<Color, Color> = when (status) {
+    FirebaseConstants.STATUS_APPROVED -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+    FirebaseConstants.STATUS_REJECTED -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
 }
 
 @Composable
