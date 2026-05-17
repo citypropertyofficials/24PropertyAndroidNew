@@ -21,6 +21,8 @@ object FirebaseConstants {
     const val FIELD_STATUS = "status"
     const val FIELD_OWNER = "owner"
     const val FIELD_OWNER_ID = "ownerId"
+    const val FIELD_DELETED_AT = "deletedAt"
+    const val FIELD_DELETED_BY = "deletedBy"
     const val FIELD_OWNER_ROLE = "ownerRole"
     const val FIELD_USER_ID = "userId"
     const val FIELD_REQUESTED_ROLE = "requestedRole"
@@ -117,6 +119,8 @@ object FirebaseConstants {
     const val STATUS_PENDING = "pending"
     const val STATUS_APPROVED = "approved"
     const val STATUS_REJECTED = "rejected"
+    const val PROPERTY_STATUS_DRAFT = "draft"
+    const val PROPERTY_STATUS_PUBLISHED = "published"
 
     const val PROPERTY_LIMIT_USER = 3
 }

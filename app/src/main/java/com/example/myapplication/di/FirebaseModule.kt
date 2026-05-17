@@ -9,6 +9,7 @@ import com.example.myapplication.data.repository.PropertyRepositoryImpl
 import com.example.myapplication.ui.screens.favorites.FavoritesViewModel
 import com.example.myapplication.ui.screens.home.HomeViewModel
 import com.example.myapplication.ui.screens.login.LoginViewModel
+import com.example.myapplication.ui.screens.myproperties.MyPropertiesViewModel
 import com.example.myapplication.ui.screens.profile.ProfileViewModel
 import com.example.myapplication.ui.screens.propertydetails.PropertyDetailsViewModel
 import com.example.myapplication.ui.screens.splash.SplashViewModel
@@ -38,4 +39,5 @@ val appModule = module {
     viewModelOf(::PropertyDetailsViewModel)
     viewModelOf(::DashboardViewModel)
     viewModelOf(::MoreViewModel)
+    viewModelOf(::MyPropertiesViewModel)
 }
