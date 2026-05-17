@@ -36,7 +36,7 @@ fun DashboardScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var selectedUser by remember { mutableStateOf<com.example.myapplication.data.model.User?>(null) }
     var selectedPropertyRequest by remember { mutableStateOf<com.example.myapplication.data.model.PropertyRequest?>(null) }
-    val tabs = listOf("Overview", "Users", "Broker Requests", "Admin Requests", "Property Requests")
+    val tabs = listOf("Users", "Broker Requests", "Admin Requests", "Property Requests")
 
     Scaffold(
         topBar = {
@@ -73,11 +73,10 @@ fun DashboardScreen(
                         onClick = { 
                             selectedTabIndex = index 
                             when(index) {
-                                0 -> viewModel.loadDashboardData()
-                                1 -> viewModel.loadUsers("all")
-                                2 -> viewModel.loadRoleRequests("broker")
-                                3 -> viewModel.loadRoleRequests("admin")
-                                4 -> viewModel.loadPropertyRequests()
+                                0 -> viewModel.loadUsers("all")
+                                1 -> viewModel.loadRoleRequests("broker")
+                                2 -> viewModel.loadRoleRequests("admin")
+                                3 -> viewModel.loadPropertyRequests()
                             }
                         },
                         text = { 
@@ -91,24 +90,24 @@ fun DashboardScreen(
             }
 
             when (selectedTabIndex) {
-                0 -> DashboardOverview(stats = uiState.stats)
-                1 -> UsersSection(
+                0 -> UsersSection(
+                    stats = uiState.stats,
                     users = uiState.users,
                     onUserClick = { selectedUser = it },
                     onToggleBlock = { viewModel.toggleUserBlock(it) },
                     onFilterChange = { viewModel.loadUsers(it) }
                 )
-                2 -> RoleRequestsSection(
+                1 -> RoleRequestsSection(
                     requests = uiState.roleRequests,
                     onApprove = { reqId, uId -> viewModel.approveRoleRequest(reqId, uId, "broker") },
                     onReject = { reqId -> viewModel.rejectRoleRequest(reqId, "broker") }
                 )
-                3 -> RoleRequestsSection(
+                2 -> RoleRequestsSection(
                     requests = uiState.roleRequests,
                     onApprove = { reqId, uId -> viewModel.approveRoleRequest(reqId, uId, "admin") },
                     onReject = { reqId -> viewModel.rejectRoleRequest(reqId, "admin") }
                 )
-                4 -> PropertyRequestsSection(
+                3 -> PropertyRequestsSection(
                     requests = uiState.propertyRequests,
                     onRequestClick = { selectedPropertyRequest = it }
                 )

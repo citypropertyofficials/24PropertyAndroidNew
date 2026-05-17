@@ -8,6 +8,7 @@ data class RoleRequest(
     val userName: String = "",
     val userEmail: String = "",
     val userMobile: String = "",
+    val currentUserRole: String = "user",
     val requestedRole: String = "",
     val status: String = "pending",
     val reason: String = "",

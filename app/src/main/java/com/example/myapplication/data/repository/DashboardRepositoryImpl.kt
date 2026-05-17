@@ -80,14 +80,52 @@ class DashboardRepositoryImpl(
     override suspend fun loadRoleRequests(roleTypeFilter: String, viewerRole: String): DashboardResult<List<RoleRequest>> {
         return try {
             val snapshot = firestore.collection(FirebaseConstants.COLLECTION_ROLE_REQUESTS)
-                .whereEqualTo(FirebaseConstants.FIELD_REQUESTED_ROLE, roleTypeFilter)
-                .orderBy(FirebaseConstants.FIELD_CREATED_AT, Query.Direction.DESCENDING)
                 .get()
                 .await()
-            
-            val requests = snapshot.toObjects(RoleRequest::class.java).mapIndexed { index, req ->
-                req.copy(id = snapshot.documents[index].id)
+
+            val rawRequests = snapshot.documents.map { document ->
+                val userId = document.getString(FirebaseConstants.FIELD_USER_ID).orEmpty()
+                val requestedRole = document.getString(FirebaseConstants.FIELD_REQUESTED_ROLE).orEmpty()
+                val status = document.getString(FirebaseConstants.FIELD_STATUS)
+                    ?: FirebaseConstants.STATUS_PENDING
+                val reason = document.getString("reason").orEmpty()
+                val createdAt = document.getTimestamp(FirebaseConstants.FIELD_CREATED_AT)
+
+                RoleRequest(
+                    id = document.id,
+                    userId = userId,
+                    requestedRole = requestedRole,
+                    status = status,
+                    reason = reason,
+                    createdAt = createdAt
+                )
             }
+
+            val userIds = rawRequests.map { it.userId }.filter { it.isNotBlank() }.distinct()
+            val userMap = userIds.associateWith { userId ->
+                firestore.collection(FirebaseConstants.COLLECTION_USERS)
+                    .document(userId)
+                    .get()
+                    .await()
+            }
+
+            val requests = rawRequests
+                .map { request ->
+                    val userDocument = userMap[request.userId]
+                    val userRole = userDocument?.getString(FirebaseConstants.FIELD_ROLE).orEmpty()
+
+                    request.copy(
+                        userName = userDocument?.getString(FirebaseConstants.FIELD_NAME).orEmpty(),
+                        userEmail = userDocument?.getString(FirebaseConstants.FIELD_EMAIL).orEmpty(),
+                        userMobile = userDocument?.getString(FirebaseConstants.FIELD_MOBILE).orEmpty(),
+                        currentUserRole = userRole.ifBlank { FirebaseConstants.ROLE_USER }
+                    ) to userRole
+                }
+                .filter { (_, userRole) -> canViewRoleRequestUser(userRole, viewerRole) }
+                .map { it.first }
+                .filter { it.requestedRole == roleTypeFilter }
+                .sortedByDescending { it.createdAt?.seconds ?: 0L }
+
             DashboardResult.Success(requests)
         } catch (e: Exception) {
             DashboardResult.Error(e.message ?: "Unknown error")
@@ -164,5 +202,12 @@ class DashboardRepositoryImpl(
         } catch (e: Exception) {
             DashboardResult.Error(e.message ?: "Unknown error")
         }
+    }
+
+    private fun canViewRoleRequestUser(userRole: String, viewerRole: String): Boolean {
+        val normalizedUserRole = userRole.ifBlank { FirebaseConstants.ROLE_USER }
+        val isDeveloperUser = normalizedUserRole == FirebaseConstants.ROLE_DEVELOPER
+        val isDeveloperViewer = viewerRole == FirebaseConstants.ROLE_DEVELOPER
+        return !isDeveloperUser || isDeveloperViewer
     }
 }
