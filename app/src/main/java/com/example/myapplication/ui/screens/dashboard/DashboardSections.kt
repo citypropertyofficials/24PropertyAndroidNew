@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
@@ -25,7 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,11 +38,15 @@ import com.example.myapplication.data.model.PropertyRequest
 import com.example.myapplication.data.model.RoleRequest
 import com.example.myapplication.data.model.User
 import com.example.myapplication.ui.theme.AccentColor
+import com.example.myapplication.ui.theme.AccentEnd
+import com.example.myapplication.ui.theme.BorderColor
 import com.example.myapplication.ui.theme.DangerColor
 import com.example.myapplication.ui.theme.GoldStart
 import com.example.myapplication.ui.theme.PrimaryEnd
 import com.example.myapplication.ui.theme.PrimaryStart
+import com.example.myapplication.ui.theme.SuccessColor
 import com.example.myapplication.ui.theme.TextSecondary
+import com.example.myapplication.ui.theme.WarningColor
 import com.example.myapplication.utils.FirebaseConstants
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -543,98 +551,177 @@ fun RoleRequestsSection(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                colors = listOf(PrimaryStart, PrimaryEnd)
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = displayName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = displayName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = request.userEmail.ifEmpty { request.userId },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = statusColors.first
+                            ) {
                                 Text(
-                                    text = displayName,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = request.status.uppercase(),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = request.userEmail.ifEmpty { request.userId },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    color = statusColors.second
                                 )
                             }
-                            Badge(
-                                text = request.status.uppercase(),
-                                containerColor = statusColors.first,
-                                contentColor = statusColors.second
-                            )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Badge(
-                                text = "Current: ${request.currentUserRole.uppercase()}",
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                            ) {
+                                Text(
+                                    text = "Current: ${request.currentUserRole.uppercase()}",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            ) {
+                                Text(
+                                    text = "Requested: ${request.requestedRole.uppercase()}",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(16.dp)
                             )
-                            Badge(
-                                text = "Requested: ${request.requestedRole.uppercase()}",
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Request Date: $requestDate",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = "Request Date: $requestDate",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
                         if (request.reason.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Reason: ${request.reason}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Reason: ${request.reason}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
                         }
                         
                         if (request.status == "pending") {
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 OutlinedButton(
                                     onClick = { onReject(request.id) },
                                     modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = DangerColor
+                                    ),
+                                    border = BorderStroke(1.5.dp, DangerColor.copy(alpha = 0.5f))
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Reject")
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Reject", fontWeight = FontWeight.SemiBold)
                                 }
                                 Button(
                                     onClick = { onApprove(request.id, request.userId) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = PrimaryStart,
+                                        contentColor = Color.White
+                                    )
                                 ) {
                                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Approve")
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Approve", fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -647,9 +734,16 @@ fun RoleRequestsSection(
 
 @Composable
 private fun requestStatusColors(status: String): Pair<Color, Color> = when (status) {
-    FirebaseConstants.STATUS_APPROVED -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
-    FirebaseConstants.STATUS_REJECTED -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
-    else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    FirebaseConstants.STATUS_APPROVED -> SuccessColor.copy(alpha = 0.15f) to SuccessColor
+    FirebaseConstants.STATUS_REJECTED -> DangerColor.copy(alpha = 0.15f) to DangerColor
+    else -> WarningColor.copy(alpha = 0.15f) to WarningColor
+}
+
+@Composable
+private fun propertyStatusColors(status: String): Pair<Color, Color> = when (status.lowercase()) {
+    "open" -> SuccessColor.copy(alpha = 0.15f) to SuccessColor
+    "closed" -> DangerColor.copy(alpha = 0.15f) to DangerColor
+    else -> WarningColor.copy(alpha = 0.15f) to WarningColor
 }
 
 @Composable
@@ -662,16 +756,23 @@ fun PropertyRequestsSection(requests: List<PropertyRequest>, onRequestClick: (Pr
             contentPadding = PaddingValues(vertical = 12.dp)
         ) {
             items(requests) { request ->
+                val statusColors = propertyStatusColors(request.status)
+                val requestDate = request.createdAt?.toDate()?.let {
+                    SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it)
+                } ?: "Unknown"
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                         .clickable { onRequestClick(request) },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -680,15 +781,20 @@ fun PropertyRequestsSection(requests: List<PropertyRequest>, onRequestClick: (Pr
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                colors = listOf(AccentColor, AccentEnd)
+                                            )
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Home,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -696,29 +802,36 @@ fun PropertyRequestsSection(requests: List<PropertyRequest>, onRequestClick: (Pr
                                     Text(
                                         text = request.propertyType.uppercase(),
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "By ${request.userName}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = TextSecondary
                                     )
                                 }
                             }
                             
-                            Badge(
-                                text = request.status.uppercase(),
-                                containerColor = if (request.status.lowercase() == "open") MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = if (request.status.lowercase() == "open") MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = statusColors.first
+                            ) {
+                                Text(
+                                    text = request.status.uppercase(),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = statusColors.second
+                                )
+                            }
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             PropertyDetailItem(
                                 icon = Icons.Default.LocationOn,
@@ -733,7 +846,10 @@ fun PropertyRequestsSection(requests: List<PropertyRequest>, onRequestClick: (Pr
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider()
+                        HorizontalDivider(
+                            color = BorderColor.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         
                         Row(
@@ -741,18 +857,43 @@ fun PropertyRequestsSection(requests: List<PropertyRequest>, onRequestClick: (Pr
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val date = request.createdAt?.toDate()?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "Unknown"
-                            Text(
-                                text = "Requested on $date",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "View More",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Requested on $requestDate",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = PrimaryStart.copy(alpha = 0.1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "View More",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = PrimaryStart
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = PrimaryStart,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
