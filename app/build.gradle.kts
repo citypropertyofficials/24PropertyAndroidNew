@@ -29,7 +29,15 @@ android {
                 ?.substringAfter("WEB_CLIENT_ID=")
                 ?.trim() ?: ""
         } else ""
+        val mapsApiKey = if (localPropertiesFile.exists()) {
+            localPropertiesFile.readLines()
+                .firstOrNull { it.startsWith("MAPS_API_KEY=") }
+                ?.substringAfter("MAPS_API_KEY=")
+                ?.trim() ?: ""
+        } else ""
         buildConfigField("String", "WEB_CLIENT_ID", "\"$webClientId\"")
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     buildTypes {
@@ -66,6 +74,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.material)
     implementation("androidx.compose.ui:ui-text-google-fonts")
 
     // Navigation
@@ -88,6 +97,9 @@ dependencies {
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.play.services.auth)
+    implementation(libs.play.services.maps)
+    implementation(libs.maps.compose)
+    implementation(libs.places)
 
     // Coil
     implementation(libs.coil.compose)

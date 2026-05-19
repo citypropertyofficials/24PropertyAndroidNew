@@ -245,14 +245,17 @@ class PropertyRepositoryImpl(
         val createdAt = data[FirebaseConstants.FIELD_CREATED_AT] as? Timestamp
         val updatedAt = data[FirebaseConstants.FIELD_UPDATED_AT] as? Timestamp
 
+        val mappedPrice = (data[FirebaseConstants.FIELD_PRICE] as? Number)?.toDouble() ?: 0.0
+        val mappedRent = (data[FirebaseConstants.FIELD_RENT] as? Number)?.toDouble() ?: mappedPrice
+
         return Property(
             id = doc.id,
             name = str(data, FirebaseConstants.FIELD_NAME),
             images = images,
             propertyType = str(data, FirebaseConstants.FIELD_PROPERTY_TYPE),
             listingType = str(data, FirebaseConstants.FIELD_LISTING_TYPE),
-            price = (data[FirebaseConstants.FIELD_PRICE] as? Number)?.toDouble() ?: 0.0,
-            rent = (data[FirebaseConstants.FIELD_RENT] as? Number)?.toDouble() ?: 0.0,
+            price = mappedPrice,
+            rent = mappedRent,
             location = str(data, FirebaseConstants.FIELD_LOCATION),
             cityState = str(data, FirebaseConstants.FIELD_CITY_STATE),
             status = str(data, FirebaseConstants.FIELD_STATUS),

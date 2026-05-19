@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.myapplication.ui.screens.addproperty.AddResidentialPropertyScreen
 import com.example.myapplication.ui.screens.login.LoginScreen
 import com.example.myapplication.ui.screens.main.MainScreen
 import com.example.myapplication.ui.screens.myproperties.MyPropertiesScreen
@@ -97,6 +98,9 @@ fun NavGraph(
                 },
                 onNavigateToMyProperties = {
                     navController.navigate(Screen.MyProperties.route)
+                },
+                onNavigateToAddResidentialProperty = {
+                    navController.navigate(Screen.AddResidentialProperty.route)
                 }
             )
         }
@@ -112,6 +116,12 @@ fun NavGraph(
 
         composable(route = Screen.Dashboard.route) {
             com.example.myapplication.ui.screens.dashboard.DashboardScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.AddResidentialProperty.route) {
+            AddResidentialPropertyScreen(
                 onBack = { navController.popBackStack() }
             )
         }
