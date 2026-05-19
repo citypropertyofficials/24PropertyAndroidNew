@@ -121,10 +121,17 @@ data class Property(
     val waterChargesIncluded: String = "",
 ) {
     val displayPrice: String
-        get() = if (listingType == "rent") {
-            "₹${String.format("%,.0f", rent)}/mo"
-        } else {
-            "₹${String.format("%,.0f", price)}"
+        get() {
+            val resolvedPrice = when {
+                price > 0.0 -> price
+                rent > 0.0 -> rent
+                else -> 0.0
+            }
+            return if (listingType == "rent") {
+                "₹${String.format("%,.0f", resolvedPrice)}/month"
+            } else {
+                "₹${String.format("%,.0f", resolvedPrice)}"
+            }
         }
 
     val displayImage: String

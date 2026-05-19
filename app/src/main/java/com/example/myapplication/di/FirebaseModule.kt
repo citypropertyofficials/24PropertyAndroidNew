@@ -2,6 +2,8 @@ package com.example.myapplication.di
 
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.AuthRepositoryImpl
+import com.example.myapplication.data.repository.AddPropertyRepository
+import com.example.myapplication.data.repository.AddPropertyRepositoryImpl
 import com.example.myapplication.data.repository.FavoritesRepository
 import com.example.myapplication.data.repository.FavoritesRepositoryImpl
 import com.example.myapplication.data.repository.PropertyRepository
@@ -15,20 +17,24 @@ import com.example.myapplication.ui.screens.propertydetails.PropertyDetailsViewM
 import com.example.myapplication.ui.screens.splash.SplashViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import com.example.myapplication.data.repository.DashboardRepository
 import com.example.myapplication.data.repository.DashboardRepositoryImpl
 import org.koin.dsl.module
 import com.example.myapplication.ui.screens.dashboard.DashboardViewModel
+import com.example.myapplication.ui.screens.addproperty.AddResidentialPropertyViewModel
 import com.example.myapplication.ui.screens.more.MoreViewModel
 import org.koin.dsl.bind
 
 val appModule = module {
     single { FirebaseAuth.getInstance() }
     single { FirebaseFirestore.getInstance() }
+    single { FirebaseStorage.getInstance() }
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::PropertyRepositoryImpl) bind PropertyRepository::class
+    singleOf(::AddPropertyRepositoryImpl) bind AddPropertyRepository::class
     singleOf(::FavoritesRepositoryImpl) bind FavoritesRepository::class
     singleOf(::DashboardRepositoryImpl) bind DashboardRepository::class
     viewModelOf(::LoginViewModel)
@@ -40,4 +46,5 @@ val appModule = module {
     viewModelOf(::DashboardViewModel)
     viewModelOf(::MoreViewModel)
     viewModelOf(::MyPropertiesViewModel)
+    viewModelOf(::AddResidentialPropertyViewModel)
 }

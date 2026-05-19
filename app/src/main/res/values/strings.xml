@@ -54,6 +54,7 @@
     <string name="tab_favorites">Favourites</string>
     <string name="tab_auctions">Auctions</string>
     <string name="tab_more">More</string>
+    <string name="add_property">Add Property</string>
 
     <!-- Home Screen -->
     <string name="welcome_home">Welcome to 24Property!</string>
