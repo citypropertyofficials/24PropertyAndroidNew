@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.myapplication.ui.screens.addproperty.AddResidentialPropertyScreen
 import com.example.myapplication.ui.screens.addproperty.AddCommercialPropertyScreen
+import com.example.myapplication.ui.screens.addproperty.AddIndustrialPropertyScreen
 import com.example.myapplication.ui.screens.login.LoginScreen
 import com.example.myapplication.ui.screens.main.MainScreen
 import com.example.myapplication.ui.screens.myproperties.MyPropertiesScreen
@@ -105,6 +106,9 @@ fun NavGraph(
                 },
                 onNavigateToAddCommercialProperty = {
                     navController.navigate(Screen.AddCommercialProperty.route)
+                },
+                onNavigateToAddIndustrialProperty = {
+                    navController.navigate(Screen.AddIndustrialProperty.route)
                 }
             )
         }
@@ -132,6 +136,12 @@ fun NavGraph(
 
         composable(route = Screen.AddCommercialProperty.route) {
             AddCommercialPropertyScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.AddIndustrialProperty.route) {
+            AddIndustrialPropertyScreen(
                 onBack = { navController.popBackStack() }
             )
         }
