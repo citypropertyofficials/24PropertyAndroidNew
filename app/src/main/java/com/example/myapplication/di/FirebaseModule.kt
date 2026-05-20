@@ -26,6 +26,7 @@ import org.koin.dsl.module
 import com.example.myapplication.ui.screens.dashboard.DashboardViewModel
 import com.example.myapplication.ui.screens.addproperty.AddResidentialPropertyViewModel
 import com.example.myapplication.ui.screens.addproperty.AddCommercialPropertyViewModel
+import com.example.myapplication.ui.screens.addproperty.AddIndustrialPropertyViewModel
 import com.example.myapplication.ui.screens.more.MoreViewModel
 import org.koin.dsl.bind
 
@@ -49,4 +50,6 @@ val appModule = module {
     viewModelOf(::MyPropertiesViewModel)
     viewModelOf(::AddResidentialPropertyViewModel)
     viewModelOf(::AddCommercialPropertyViewModel)
+    viewModelOf(::AddIndustrialPropertyViewModel)
 }
+

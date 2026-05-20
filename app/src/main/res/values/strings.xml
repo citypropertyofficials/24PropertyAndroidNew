@@ -167,4 +167,11 @@
             qXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXqXq=
         </item>
     </string-array>
+
+    <!-- Add Industrial Property -->
+    <string name="add_industrial_property">Add Industrial Property</string>
+    <string name="industrial_property_saved_draft">Industrial property saved as draft.</string>
+    <string name="industrial_property_added_success">Industrial property added successfully.</string>
+    <string name="complete_required_industrial_fields">Complete the required industrial property fields.</string>
 </resources>
+

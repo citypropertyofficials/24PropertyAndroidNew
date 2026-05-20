@@ -5,6 +5,7 @@ import com.example.myapplication.BuildConfig
 
 const val RESIDENTIAL_PROPERTY_TYPE = "residential"
 const val COMMERCIAL_PROPERTY_TYPE = "commercial"
+const val INDUSTRIAL_PROPERTY_TYPE = "industrial"
 const val LISTING_TYPE_RENT = "rent"
 const val LISTING_TYPE_SALE = "sale"
 const val MAX_PROPERTY_IMAGES = 8
@@ -89,6 +90,23 @@ data class AddCommercialPropertyUiState(
 sealed class AddCommercialPropertyEvent {
     data class ShowMessage(val message: String) : AddCommercialPropertyEvent()
     data object PropertySaved : AddCommercialPropertyEvent()
+}
+
+data class AddIndustrialPropertyUiState(
+    val listingType: String = LISTING_TYPE_RENT,
+    val fieldValues: Map<String, String> = defaultIndustrialFieldValues(),
+    val amenities: Set<String> = emptySet(),
+    val imageUris: List<Uri> = emptyList(),
+    val selectedLocation: SelectedLocation? = null,
+    val fieldErrors: Map<String, String> = emptyMap(),
+    val isSavingDraft: Boolean = false,
+    val isPublishing: Boolean = false,
+    val mapsApiConfigured: Boolean = BuildConfig.MAPS_API_KEY.isNotBlank()
+)
+
+sealed class AddIndustrialPropertyEvent {
+    data class ShowMessage(val message: String) : AddIndustrialPropertyEvent()
+    data object PropertySaved : AddIndustrialPropertyEvent()
 }
 
 val propertyTypeOptions = listOf(
@@ -340,6 +358,134 @@ fun defaultCommercialFieldValues(): Map<String, String> {
         "landmark" to ""
     )
     commercialSections.flatMap { it.fields }.forEach { field ->
+        base[field.id] = field.defaultValue
+    }
+    return base
+}
+
+val industrialSections = listOf(
+    PropertyFormSection(
+        title = "Type & Category",
+        fields = listOf(
+            PropertyFieldDefinition("industrialType", "Industrial Type", FormFieldType.SELECT, listOf("Warehouse", "Plot", "Industrial Plot", "Industrial Shed", "Shed with Plant and machinery", "Industrial Plot with Factory Building", "Other"), defaultValue = "Industrial Plot")
+        )
+    ),
+    PropertyFormSection(
+        title = "Location & Building",
+        fields = listOf(
+            PropertyFieldDefinition("buildingName", "Building/Project/Society/MIDC Name", FormFieldType.TEXT, placeholder = "e.g., MIDC Industrial Area"),
+            PropertyFieldDefinition("locality", "Locality", FormFieldType.TEXT, placeholder = "e.g., Waluj MIDC"),
+            PropertyFieldDefinition("zoneType", "Zone Type", FormFieldType.SELECT, listOf("Industrial", "R-zone", "Hill top", "Red zone", "Eco sensitive zone", "Agri zone", "MIDC", "Commercial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"), defaultValue = "Industrial"),
+            PropertyFieldDefinition("locationHub", "Location Hub", FormFieldType.SELECT, listOf("IT Park", "Business Park", "Other"), defaultValue = "Other")
+        )
+    ),
+    PropertyFormSection(
+        title = "Status & Availability",
+        fields = listOf(
+            PropertyFieldDefinition("possessionStatus", "Possession Status", FormFieldType.SELECT, listOf("Ready to Move", "Under Construction"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Ready to Move"),
+            PropertyFieldDefinition("availableFrom", "Available From", FormFieldType.SELECT, listOf("Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Immediate"),
+            PropertyFieldDefinition("showingDateTime", "Property Showing Date & Time", FormFieldType.DATETIME),
+            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day"))
+        )
+    ),
+    PropertyFormSection(
+        title = "Property & Legal",
+        fields = listOf(
+            PropertyFieldDefinition("propertyCondition", "Property Condition", FormFieldType.SELECT, listOf("Ready to Use", "Bare Shell"), defaultValue = "Ready to Use"),
+            PropertyFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Freehold", "Leasehold", "Cooperative Society", "Power of Attorney"), defaultValue = "Leasehold"),
+            PropertyFieldDefinition("plotArea", "Plot Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 10000", required = true),
+            PropertyFieldDefinition("plotAreaUnit", "Plot Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr", "Acre", "Hector"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("plotWidth", "Plot Width (ft)", FormFieldType.NUMBER, placeholder = "e.g., 100"),
+            PropertyFieldDefinition("plotLength", "Plot Length (ft)", FormFieldType.NUMBER, placeholder = "e.g., 200"),
+            PropertyFieldDefinition("builtUpArea", "Built-up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 8000"),
+            PropertyFieldDefinition("builtUpAreaUnit", "Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 7000"),
+            PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("totalConstructionArea", "Total Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 9000"),
+            PropertyFieldDefinition("frontage", "Frontage (ft)", FormFieldType.NUMBER, placeholder = "e.g., 100"),
+            PropertyFieldDefinition("roadAccess", "Road Access (ft)", FormFieldType.NUMBER, placeholder = "e.g., 80")
+        )
+    ),
+    PropertyFormSection(
+        title = "Industrial/Shed Specific",
+        fields = listOf(
+            PropertyFieldDefinition("shedHeight", "Shed Height (ft)", FormFieldType.NUMBER, placeholder = "e.g., 20"),
+            PropertyFieldDefinition("shedSideWallHeight", "Shed Side Wall Height (ft)", FormFieldType.NUMBER, placeholder = "e.g., 15"),
+            PropertyFieldDefinition("plotDimensions", "Width, Length", FormFieldType.TEXT, placeholder = "e.g., 100 ft x 200 ft"),
+            PropertyFieldDefinition("shedBuiltUpArea", "Built-up Area (Shed) (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 5000"),
+            PropertyFieldDefinition("shedBuiltUpAreaUnit", "Shed Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("builtUpConstructionArea", "Built-up Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 6000"),
+            PropertyFieldDefinition("builtUpConstructionAreaUnit", "Built-up Construction Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("electricityLoad", "Electricity Load", FormFieldType.SELECT, listOf("Up to 50 KW", "50-100 KW", "100-200 KW", "200-300 KW", "500+ KW"), defaultValue = "Up to 50 KW"),
+            PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "MIDC", "Other")),
+            PropertyFieldDefinition("plotLayout", "Plot Layout", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("preLeased", "Is it Pre-leased", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("preRented", "Is it Pre-rented", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No")
+        )
+    ),
+    PropertyFormSection(
+        title = "Lease & Financials",
+        fields = listOf(
+            PropertyFieldDefinition("priceNegotiable", "Price Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "No"),
+            PropertyFieldDefinition("rentNegotiable", "Is Rent Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
+            PropertyFieldDefinition("securityDeposit", "Security Deposit", FormFieldType.SELECT, listOf("1 month", "2 months", "3 months", "Custom amount"), defaultValue = "2 months"),
+            PropertyFieldDefinition("rentIncrease", "Expected Rent Increase", FormFieldType.SELECT, listOf("5% annually", "10% annually", "15% annually", "Custom", "No increase"), defaultValue = "10% annually"),
+            PropertyFieldDefinition("lockInPeriod", "Lock-in Period", FormFieldType.SELECT, listOf("None", "6 months", "1 year", "2 years", "Custom"), defaultValue = "1 year")
+        )
+    ),
+    PropertyFormSection(
+        title = "Charges & Inclusions",
+        fields = listOf(
+            PropertyFieldDefinition("dampUpsIncluded", "DG & UPS Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("electricityIncluded", "Electricity Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("waterChargesIncluded", "Water Charges Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No")
+        )
+    ),
+    PropertyFormSection(
+        title = "Floors & Elevation",
+        fields = listOf(
+            PropertyFieldDefinition("yourFloor", "Your Floor", FormFieldType.TEXT, placeholder = "e.g., Ground Floor"),
+            PropertyFieldDefinition("totalFloors", "Total Floors", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"), defaultValue = "1"),
+            PropertyFieldDefinition("staircases", "Number of Staircases", FormFieldType.SELECT, listOf("1", "2", "3", "4+"), defaultValue = "1"),
+            PropertyFieldDefinition("passengerLift", "Passenger Lift", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("serviceLift", "Service Lift", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No")
+        )
+    ),
+    PropertyFormSection(
+        title = "Parking & Washrooms",
+        fields = listOf(
+            PropertyFieldDefinition("parkingType", "Parking", FormFieldType.SELECT, listOf("Private", "Public"), defaultValue = "Private"),
+            PropertyFieldDefinition("washroomType", "Washroom", FormFieldType.SELECT, listOf("Private", "Public"), defaultValue = "Private")
+        )
+    ),
+    PropertyFormSection(
+        title = "Facing & Facilities",
+        fields = listOf(
+            PropertyFieldDefinition("rearFacing", "Rear", FormFieldType.TEXT, placeholder = "e.g., Open Space"),
+            PropertyFieldDefinition("facing", "Facing", FormFieldType.SELECT, listOf("Don't Know", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"), defaultValue = "Don't Know"),
+            PropertyFieldDefinition("roadFacing", "Road", FormFieldType.TEXT, placeholder = "e.g., Service Road")
+        )
+    ),
+    PropertyFormSection(
+        title = "Legal Documents",
+        fields = listOf(
+            PropertyFieldDefinition("commencementCertificate", "Building / Shed Commencement Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("occupancyCertificate", "Building / Shed Occupancy / Completion Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE))
+        )
+    )
+)
+
+fun defaultIndustrialFieldValues(): Map<String, String> {
+    val base = mutableMapOf(
+        "propertyPrice" to "",
+        "buildingName" to "",
+        "description" to "",
+        "state" to "",
+        "city" to "",
+        "nameStreetArea" to "",
+        "landmark" to ""
+    )
+    industrialSections.flatMap { it.fields }.forEach { field ->
         base[field.id] = field.defaultValue
     }
     return base

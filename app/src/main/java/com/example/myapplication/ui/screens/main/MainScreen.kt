@@ -74,7 +74,8 @@ fun MainScreen(
     onNavigateToDashboard: () -> Unit,
     onNavigateToMyProperties: () -> Unit,
     onNavigateToAddResidentialProperty: () -> Unit,
-    onNavigateToAddCommercialProperty: () -> Unit
+    onNavigateToAddCommercialProperty: () -> Unit,
+    onNavigateToAddIndustrialProperty: () -> Unit
 ) {
     val navItems = listOf(
         BottomNavItem.Home,
@@ -95,7 +96,7 @@ fun MainScreen(
                 Text("Choose property category. Residential and Commercial are live.", color = TextSecondary)
                 Spacer(Modifier.height(16.dp))
                 propertyTypeOptions.forEach { option ->
-                    val isActive = option.id == "residential" || option.id == "commercial"
+                    val isActive = option.id == "residential" || option.id == "commercial" || option.id == "industrial"
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -105,6 +106,7 @@ fun MainScreen(
                                 when (option.id) {
                                     "residential" -> onNavigateToAddResidentialProperty()
                                     "commercial" -> onNavigateToAddCommercialProperty()
+                                    "industrial" -> onNavigateToAddIndustrialProperty()
                                     else -> {
                                         scope.launch {
                                             snackbarHostState.showSnackbar("${option.title} will be wired next.")
