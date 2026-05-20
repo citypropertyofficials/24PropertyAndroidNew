@@ -4,6 +4,7 @@ import android.net.Uri
 import com.example.myapplication.BuildConfig
 
 const val RESIDENTIAL_PROPERTY_TYPE = "residential"
+const val COMMERCIAL_PROPERTY_TYPE = "commercial"
 const val LISTING_TYPE_RENT = "rent"
 const val LISTING_TYPE_SALE = "sale"
 const val MAX_PROPERTY_IMAGES = 8
@@ -22,7 +23,7 @@ data class FieldVisibilityRule(
     val values: Set<String>
 )
 
-data class ResidentialFieldDefinition(
+data class PropertyFieldDefinition(
     val id: String,
     val label: String,
     val type: FormFieldType,
@@ -34,10 +35,14 @@ data class ResidentialFieldDefinition(
     val defaultValue: String = ""
 )
 
-data class ResidentialFormSection(
+data class PropertyFormSection(
     val title: String,
-    val fields: List<ResidentialFieldDefinition>
+    val fields: List<PropertyFieldDefinition>
 )
+
+// Maintain 100% backward compatibility for existing Residential classes
+typealias ResidentialFieldDefinition = PropertyFieldDefinition
+typealias ResidentialFormSection = PropertyFormSection
 
 data class PropertyTypeOption(
     val id: String,
@@ -69,6 +74,23 @@ sealed class AddResidentialPropertyEvent {
     data object PropertySaved : AddResidentialPropertyEvent()
 }
 
+data class AddCommercialPropertyUiState(
+    val listingType: String = LISTING_TYPE_RENT,
+    val fieldValues: Map<String, String> = defaultCommercialFieldValues(),
+    val amenities: Set<String> = emptySet(),
+    val imageUris: List<Uri> = emptyList(),
+    val selectedLocation: SelectedLocation? = null,
+    val fieldErrors: Map<String, String> = emptyMap(),
+    val isSavingDraft: Boolean = false,
+    val isPublishing: Boolean = false,
+    val mapsApiConfigured: Boolean = BuildConfig.MAPS_API_KEY.isNotBlank()
+)
+
+sealed class AddCommercialPropertyEvent {
+    data class ShowMessage(val message: String) : AddCommercialPropertyEvent()
+    data object PropertySaved : AddCommercialPropertyEvent()
+}
+
 val propertyTypeOptions = listOf(
     PropertyTypeOption("residential", "Residential Property", "Houses, flats, villas, duplexes, and hostels."),
     PropertyTypeOption("commercial", "Commercial Property", "Shops, offices, showrooms, and workspaces."),
@@ -86,95 +108,207 @@ val residentialAmenities = listOf(
     "Children Play Area", "Servant Room", "Park"
 )
 
+val commercialAmenities = listOf(
+    "On Main Road", "Corner Property"
+)
+
 val residentialSections = listOf(
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Type & Category",
         fields = listOf(
-            ResidentialFieldDefinition("residentialType", "Residential Type", FormFieldType.SELECT, listOf("Flat", "Individual House", "Villa", "Bungalow", "Farmhouse", "Studio", "Apartment", "Duplex", "Penthouse", "PG/Hostel"), defaultValue = "Flat"),
-            ResidentialFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Self owned", "On lease"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Self owned")
+            PropertyFieldDefinition("residentialType", "Residential Type", FormFieldType.SELECT, listOf("Flat", "Individual House", "Villa", "Bungalow", "Farmhouse", "Studio", "Apartment", "Duplex", "Penthouse", "PG/Hostel"), defaultValue = "Flat"),
+            PropertyFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Self owned", "On lease"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Self owned")
         )
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Configuration & Area",
         fields = listOf(
-            ResidentialFieldDefinition("bhkConfig", "BHK Configuration", FormFieldType.SELECT, listOf("1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "5 BHK+", "4+ BHK"), required = true, defaultValue = "2 BHK"),
-            ResidentialFieldDefinition("possessionStatus", "Property Status", FormFieldType.SELECT, listOf("Ready Possession", "Under Construction"), required = true),
-            ResidentialFieldDefinition("builtUpArea", "Built Up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 1200", required = true),
-            ResidentialFieldDefinition("builtUpAreaUnit", "Built Up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            ResidentialFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 1000"),
-            ResidentialFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            ResidentialFieldDefinition("propertyAge", "Age of Property", FormFieldType.SELECT, listOf("Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"), defaultValue = "Less than 1 year"),
-            ResidentialFieldDefinition("totalFloors", "Total Floors in Building", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"), defaultValue = "5"),
-            ResidentialFieldDefinition("floorNumber", "Floor Number", FormFieldType.SELECT, listOf("Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor", "7th Floor", "8th Floor", "9th Floor", "10th Floor", "11+ Floor"), defaultValue = "Ground Floor"),
-            ResidentialFieldDefinition("floorType", "Floor Type", FormFieldType.SELECT, listOf("Cement", "Vitrified Tiles", "Natural Stone", "Mosaic", "Marble", "Granite", "Wooden")),
-            ResidentialFieldDefinition("bathrooms", "Number of Bathrooms", FormFieldType.SELECT, listOf("1", "2", "3", "4+"), defaultValue = "2"),
-            ResidentialFieldDefinition("balconies", "Number of Balconies", FormFieldType.SELECT, listOf("0", "1", "2", "3", "4+"), defaultValue = "1"),
-            ResidentialFieldDefinition("furnishing", "Furnishing Status", FormFieldType.SELECT, listOf("Fully Furnished", "Semi-Furnished", "Unfurnished"), defaultValue = "Semi-Furnished")
+            PropertyFieldDefinition("bhkConfig", "BHK Configuration", FormFieldType.SELECT, listOf("1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "5 BHK+", "4+ BHK"), required = true, defaultValue = "2 BHK"),
+            PropertyFieldDefinition("possessionStatus", "Property Status", FormFieldType.SELECT, listOf("Ready Possession", "Under Construction"), required = true),
+            PropertyFieldDefinition("builtUpArea", "Built Up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 1200", required = true),
+            PropertyFieldDefinition("builtUpAreaUnit", "Built Up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 1000"),
+            PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("propertyAge", "Age of Property", FormFieldType.SELECT, listOf("Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"), defaultValue = "Less than 1 year"),
+            PropertyFieldDefinition("totalFloors", "Total Floors in Building", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"), defaultValue = "5"),
+            PropertyFieldDefinition("floorNumber", "Floor Number", FormFieldType.SELECT, listOf("Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor", "7th Floor", "8th Floor", "9th Floor", "10th Floor", "11+ Floor"), defaultValue = "Ground Floor"),
+            PropertyFieldDefinition("floorType", "Floor Type", FormFieldType.SELECT, listOf("Cement", "Vitrified Tiles", "Natural Stone", "Mosaic", "Marble", "Granite", "Wooden")),
+            PropertyFieldDefinition("bathrooms", "Number of Bathrooms", FormFieldType.SELECT, listOf("1", "2", "3", "4+"), defaultValue = "2"),
+            PropertyFieldDefinition("balconies", "Number of Balconies", FormFieldType.SELECT, listOf("0", "1", "2", "3", "4+"), defaultValue = "1"),
+            PropertyFieldDefinition("furnishing", "Furnishing Status", FormFieldType.SELECT, listOf("Fully Furnished", "Semi-Furnished", "Unfurnished"), defaultValue = "Semi-Furnished")
         )
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Parking & Accessibility",
         fields = listOf(
-            ResidentialFieldDefinition("coveredParking", "Covered Parking", FormFieldType.SELECT, listOf("No", "Bike", "Car", "Car & Bike", "1 slot", "2 slots", "3 slots", "4+ slots"), defaultValue = "No"),
-            ResidentialFieldDefinition("openParking", "Open Parking", FormFieldType.SELECT, listOf("No", "Bike", "Car", "Car & Bike", "1 slot (2-wheeler)", "1 slot (4-wheeler)", "2 slots", "3+ slots"), defaultValue = "No"),
-            ResidentialFieldDefinition("parkingCharges", "Parking Charges", FormFieldType.SELECT, listOf("Included in rent", "Separate charges"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Included in rent"),
-            ResidentialFieldDefinition("liftAvailable", "Lift", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No")
+            PropertyFieldDefinition("coveredParking", "Covered Parking", FormFieldType.SELECT, listOf("No", "Bike", "Car", "Car & Bike", "1 slot", "2 slots", "3 slots", "4+ slots"), defaultValue = "No"),
+            PropertyFieldDefinition("openParking", "Open Parking", FormFieldType.SELECT, listOf("No", "Bike", "Car", "Car & Bike", "1 slot (2-wheeler)", "1 slot (4-wheeler)", "2 slots", "3+ slots"), defaultValue = "No"),
+            PropertyFieldDefinition("parkingCharges", "Parking Charges", FormFieldType.SELECT, listOf("Included in rent", "Separate charges"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Included in rent"),
+            PropertyFieldDefinition("liftAvailable", "Lift", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No")
         )
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Tenancy Details",
         fields = listOf(
-            ResidentialFieldDefinition("tenantType", "Preferred Tenant Type", FormFieldType.SELECT, listOf("Family", "Bachelors", "Company", "Student Boys/Girls", "Any One"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Family"),
-            ResidentialFieldDefinition("petFriendly", "Pet Friendly", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Yes"),
-            ResidentialFieldDefinition("availableFrom", "Available From", FormFieldType.SELECT, listOf("Immediate", "Within 15 days", "Within 30 days", "After 30 days"), defaultValue = "Immediate"),
-            ResidentialFieldDefinition("maintenanceCharges", "Maintenance Charges", FormFieldType.SELECT, listOf("Included in rent", "Separate charges"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Included in rent"),
-            ResidentialFieldDefinition("maintenanceAmount", "Monthly Maintenance Amount (₹)", FormFieldType.NUMBER, placeholder = "e.g., 2500"),
-            ResidentialFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
-            ResidentialFieldDefinition("propertyShower", "Who Will Show This Property", FormFieldType.SELECT, listOf("Need help", "I will show", "Neighbours", "Friend", "Relative", "Security", "Tenants", "Other")),
-            ResidentialFieldDefinition("showingDateTime", "Availability Date & Time", FormFieldType.DATETIME),
-            ResidentialFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day")),
-            ResidentialFieldDefinition("currentSituation", "Current Situation of Property", FormFieldType.SELECT, listOf("Vacant", "Tenant", "Self occupied", "Sell urgent", "Not finding tenant"))
+            PropertyFieldDefinition("tenantType", "Preferred Tenant Type", FormFieldType.SELECT, listOf("Family", "Bachelors", "Company", "Student Boys/Girls", "Any One"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Family"),
+            PropertyFieldDefinition("petFriendly", "Pet Friendly", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Yes"),
+            PropertyFieldDefinition("availableFrom", "Available From", FormFieldType.SELECT, listOf("Immediate", "Within 15 days", "Within 30 days", "After 30 days"), defaultValue = "Immediate"),
+            PropertyFieldDefinition("maintenanceCharges", "Maintenance Charges", FormFieldType.SELECT, listOf("Included in rent", "Separate charges"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Included in rent"),
+            PropertyFieldDefinition("maintenanceAmount", "Monthly Maintenance Amount (₹)", FormFieldType.NUMBER, placeholder = "e.g., 2500"),
+            PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
+            PropertyFieldDefinition("propertyShower", "Who Will Show This Property", FormFieldType.SELECT, listOf("Need help", "I will show", "Neighbours", "Friend", "Relative", "Security", "Tenants", "Other")),
+            PropertyFieldDefinition("showingDateTime", "Availability Date & Time", FormFieldType.DATETIME),
+            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day")),
+            PropertyFieldDefinition("currentSituation", "Current Situation of Property", FormFieldType.SELECT, listOf("Vacant", "Tenant", "Self occupied", "Sell urgent", "Not finding tenant"))
         )
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Payments & Contracts",
         fields = listOf(
-            ResidentialFieldDefinition("priceNegotiable", "Price Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
-            ResidentialFieldDefinition("securityDeposit", "Security Deposit", FormFieldType.SELECT, listOf("None", "1 month", "2 months", "6 months", "Custom amount"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "1 month"),
-            ResidentialFieldDefinition("lockInPeriod", "Lock-in Period", FormFieldType.SELECT, listOf("None", "1 month", "6 months", "Custom period"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "None"),
-            ResidentialFieldDefinition("brokerageRequired", "Brokerage Required", FormFieldType.SELECT, listOf("No", "15 days rent", "30 days rent", "Custom amount"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
-            ResidentialFieldDefinition("rentIncrease", "Expected Rent Increase (₹)", FormFieldType.NUMBER, placeholder = "e.g., 2000", listingTypes = setOf(LISTING_TYPE_RENT)),
-            ResidentialFieldDefinition("nonVegAllowed", "Non-veg Allowed", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Yes"),
-            ResidentialFieldDefinition("currentUnderLoan", "Current Under Loan", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "No"),
-            ResidentialFieldDefinition("commencementCertificate", "Commencement Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            ResidentialFieldDefinition("occupancyCertificate", "Occupancy / Completion Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            ResidentialFieldDefinition("possessionLetter", "Possession Letter", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            ResidentialFieldDefinition("saleDeed", "Sale Deed", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            ResidentialFieldDefinition("propertyTaxPaid", "Property Tax Paid", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            ResidentialFieldDefinition("societyFormation", "Society Formation / Apartment", FormFieldType.TEXT, placeholder = "e.g., Formed Society", listingTypes = setOf(LISTING_TYPE_SALE))
+            PropertyFieldDefinition("priceNegotiable", "Price Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("securityDeposit", "Security Deposit", FormFieldType.SELECT, listOf("None", "1 month", "2 months", "6 months", "Custom amount"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "1 month"),
+            PropertyFieldDefinition("lockInPeriod", "Lock-in Period", FormFieldType.SELECT, listOf("None", "1 month", "6 months", "Custom period"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "None"),
+            PropertyFieldDefinition("brokerageRequired", "Brokerage Required", FormFieldType.SELECT, listOf("No", "15 days rent", "30 days rent", "Custom amount"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
+            PropertyFieldDefinition("rentIncrease", "Expected Rent Increase (₹)", FormFieldType.NUMBER, placeholder = "e.g., 2000", listingTypes = setOf(LISTING_TYPE_RENT)),
+            PropertyFieldDefinition("nonVegAllowed", "Non-veg Allowed", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Yes"),
+            PropertyFieldDefinition("currentUnderLoan", "Current Under Loan", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "No"),
+            PropertyFieldDefinition("commencementCertificate", "Commencement Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("occupancyCertificate", "Occupancy / Completion Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("possessionLetter", "Possession Letter", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("saleDeed", "Sale Deed", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("propertyTaxPaid", "Property Tax Paid", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("societyFormation", "Society Formation / Apartment", FormFieldType.TEXT, placeholder = "e.g., Formed Society", listingTypes = setOf(LISTING_TYPE_SALE))
         )
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Room & Facilities",
         fields = listOf(
-            ResidentialFieldDefinition("servantRoom", "Servant Room Available", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
-            ResidentialFieldDefinition("facing", "Property Facing", FormFieldType.SELECT, listOf("Don't Know", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"), defaultValue = "Don't Know"),
-            ResidentialFieldDefinition("plotArea", "Plot Area", FormFieldType.NUMBER, placeholder = "e.g., 2400", visibleWhen = FieldVisibilityRule("residentialType", villaTypes)),
-            ResidentialFieldDefinition("plotAreaUnit", "Plot Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), visibleWhen = FieldVisibilityRule("residentialType", villaTypes), defaultValue = "sq ft"),
-            ResidentialFieldDefinition("plotLength", "Plot Length (ft)", FormFieldType.NUMBER, placeholder = "e.g., 40", visibleWhen = FieldVisibilityRule("residentialType", villaTypes)),
-            ResidentialFieldDefinition("plotWidth", "Plot Width (ft)", FormFieldType.NUMBER, placeholder = "e.g., 60", visibleWhen = FieldVisibilityRule("residentialType", villaTypes))
+            PropertyFieldDefinition("servantRoom", "Servant Room Available", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("facing", "Property Facing", FormFieldType.SELECT, listOf("Don't Know", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"), defaultValue = "Don't Know"),
+            PropertyFieldDefinition("plotArea", "Plot Area", FormFieldType.NUMBER, placeholder = "e.g., 2400", visibleWhen = FieldVisibilityRule("residentialType", villaTypes)),
+            PropertyFieldDefinition("plotAreaUnit", "Plot Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), visibleWhen = FieldVisibilityRule("residentialType", villaTypes), defaultValue = "sq ft"),
+            PropertyFieldDefinition("plotLength", "Plot Length (ft)", FormFieldType.NUMBER, placeholder = "e.g., 40", visibleWhen = FieldVisibilityRule("residentialType", villaTypes)),
+            PropertyFieldDefinition("plotWidth", "Plot Width (ft)", FormFieldType.NUMBER, placeholder = "e.g., 60", visibleWhen = FieldVisibilityRule("residentialType", villaTypes))
         )
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Amenities",
         fields = residentialAmenities.map { amenity ->
-            ResidentialFieldDefinition(id = amenity, label = amenity, type = FormFieldType.AMENITY)
+            PropertyFieldDefinition(id = amenity, label = amenity, type = FormFieldType.AMENITY)
         }
     ),
-    ResidentialFormSection(
+    PropertyFormSection(
         title = "Residency Details",
         fields = listOf(
-            ResidentialFieldDefinition("residentsCount", "Current Number of Residents", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "2")
+            PropertyFieldDefinition("residentsCount", "Current Number of Residents", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "2")
+        )
+    )
+)
+
+val commercialSections = listOf(
+    PropertyFormSection(
+        title = "Type & Category",
+        fields = listOf(
+            PropertyFieldDefinition("commercialType", "Commercial Type", FormFieldType.SELECT, listOf("Office Space", "Retail Shop", "Shop", "Showroom", "Restaurant", "Cafe", "Co-working", "Other"), defaultValue = "Office Space"),
+            PropertyFieldDefinition("buildingType", "Building Type", FormFieldType.SELECT, listOf("Independent House", "Standalone Building", "Business Park", "Independent Shop", "Mall"))
+        )
+    ),
+    PropertyFormSection(
+        title = "Location & Building",
+        fields = listOf(
+            PropertyFieldDefinition("buildingName", "Building/Project/Society/MIDC Name", FormFieldType.TEXT, placeholder = "e.g., Phoenix Mall"),
+            PropertyFieldDefinition("locality", "Locality", FormFieldType.TEXT, placeholder = "e.g., Andheri East"),
+            PropertyFieldDefinition("zoneType", "Zone Type", FormFieldType.SELECT, listOf("Commercial", "Industrial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"), defaultValue = "Commercial"),
+            PropertyFieldDefinition("locationHub", "Location Hub", FormFieldType.SELECT, listOf("IT Park", "Business Park", "Other"), defaultValue = "Other")
+        )
+    ),
+    PropertyFormSection(
+        title = "Status & Availability",
+        fields = listOf(
+            PropertyFieldDefinition("possessionStatus", "Possession Status", FormFieldType.SELECT, listOf("Ready to Move", "Under Construction"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Ready to Move"),
+            PropertyFieldDefinition("availableFrom", "Available From", FormFieldType.SELECT, listOf("Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Immediate"),
+            PropertyFieldDefinition("currentSituation", "Current Situation of Property", FormFieldType.SELECT, listOf("Vacant", "Rental", "Self occupied", "Sell urgent")),
+            PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
+            PropertyFieldDefinition("currentBusiness", "Current Business Running", FormFieldType.SELECT, listOf("Office", "Restaurant", "Cafe", "Salon", "Spa", "Store", "Showroom", "ATM", "Other")),
+            PropertyFieldDefinition("showingDateTime", "Property Showing Date & Time", FormFieldType.DATETIME),
+            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day"))
+        )
+    ),
+    PropertyFormSection(
+        title = "Property & Legal",
+        fields = listOf(
+            PropertyFieldDefinition("propertyCondition", "Property Condition", FormFieldType.SELECT, listOf("Ready to Use", "Bare Shell"), defaultValue = "Ready to Use"),
+            PropertyFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Freehold", "Leasehold", "Cooperative Society", "Power of Attorney"), defaultValue = "Leasehold"),
+            PropertyFieldDefinition("plotArea", "Plot Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 5000"),
+            PropertyFieldDefinition("builtUpArea", "Built-up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 3000", required = true),
+            PropertyFieldDefinition("builtUpAreaUnit", "Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 2500"),
+            PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("propertyAge", "Age of Property", FormFieldType.SELECT, listOf("Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"), defaultValue = "Less than 1 year"),
+            PropertyFieldDefinition("totalConstructionArea", "Total Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 3500"),
+            PropertyFieldDefinition("frontage", "Frontage (ft)", FormFieldType.NUMBER, placeholder = "e.g., 50"),
+            PropertyFieldDefinition("roadAccess", "Road Access (ft)", FormFieldType.NUMBER, placeholder = "e.g., 40")
+        )
+    ),
+    PropertyFormSection(
+        title = "Pricing & Financials",
+        fields = listOf(
+            PropertyFieldDefinition("priceNegotiable", "Price Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "No"),
+            PropertyFieldDefinition("rentNegotiable", "Is Rent Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
+            PropertyFieldDefinition("securityDeposit", "Security Deposit", FormFieldType.SELECT, listOf("None", "1 month", "6 months", "Custom amount"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "1 month"),
+            PropertyFieldDefinition("rentIncrease", "Expected Rent Increase (₹)", FormFieldType.NUMBER, placeholder = "e.g., 5000", listingTypes = setOf(LISTING_TYPE_RENT)),
+            PropertyFieldDefinition("lockInPeriod", "Lock-in Period", FormFieldType.SELECT, listOf("None", "6 months", "1 year", "2 years", "Custom"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "1 year"),
+            PropertyFieldDefinition("maintenanceAmount", "Monthly Maintenance Amount (₹)", FormFieldType.NUMBER, placeholder = "e.g., 3000"),
+            PropertyFieldDefinition("maintenanceCharges", "Maintenance Charges", FormFieldType.SELECT, listOf("Included in rent", "Separate charges"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Included in rent")
+        )
+    ),
+    PropertyFormSection(
+        title = "Charges & Inclusions",
+        fields = listOf(
+            PropertyFieldDefinition("dampUpsIncluded", "DG & UPS Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
+            PropertyFieldDefinition("electricityIncluded", "Electricity Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
+            PropertyFieldDefinition("waterChargesIncluded", "Water Charges Included", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No")
+        )
+    ),
+    PropertyFormSection(
+        title = "Floors & Elevation",
+        fields = listOf(
+            PropertyFieldDefinition("yourFloor", "Floor Info", FormFieldType.SELECT, listOf("Lower Basement", "Upper Basement", "Full Building", "Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor", "7th Floor", "8th Floor", "9th Floor", "10th Floor", "11th Floor", "12th Floor", "13th Floor", "14th Floor", "15th Floor", "16th Floor", "17th Floor", "18th Floor", "19th Floor", "20th Floor", "20+ Floor"), defaultValue = "Ground Floor"),
+            PropertyFieldDefinition("totalFloors", "Total Floors", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"), defaultValue = "5"),
+            PropertyFieldDefinition("staircases", "Number of Staircases", FormFieldType.SELECT, listOf("1", "2", "3", "4+"), defaultValue = "1"),
+            PropertyFieldDefinition("liftType", "Lift", FormFieldType.SELECT, listOf("None", "Passenger Lift", "Service Lift"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "None"),
+            PropertyFieldDefinition("liftType", "Lift", FormFieldType.SELECT, listOf("None", "Personal", "Common", "Passenger Lift", "Service Lift"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "None")
+        )
+    ),
+    PropertyFormSection(
+        title = "Parking & Washrooms",
+        fields = listOf(
+            PropertyFieldDefinition("parkingType", "Parking", FormFieldType.SELECT, listOf("None", "Reserved", "Public", "Public Reserved", "Private"), defaultValue = "None"),
+            PropertyFieldDefinition("washroomType", "Washroom", FormFieldType.SELECT, listOf("No washroom", "Shared", "Private", "Public"), defaultValue = "Private")
+        )
+    ),
+    PropertyFormSection(
+        title = "Facing & Facilities",
+        fields = listOf(
+            PropertyFieldDefinition("facing", "Facing", FormFieldType.SELECT, listOf("Don't Know", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"), defaultValue = "Don't Know"),
+            PropertyFieldDefinition("roadFacing", "Road", FormFieldType.TEXT, placeholder = "e.g., Main Road")
+        )
+    ),
+    PropertyFormSection(
+        title = "Other Features",
+        fields = commercialAmenities.map { amenity ->
+            PropertyFieldDefinition(id = amenity, label = amenity, type = FormFieldType.AMENITY)
+        }
+    ),
+    PropertyFormSection(
+        title = "Legal Documents",
+        fields = listOf(
+            PropertyFieldDefinition("commencementCertificate", "Commencement Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("occupancyCertificate", "Occupancy / Completion Certificate", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("possessionLetter", "Possession Letter", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("saleDeed", "Sale Deed", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("propertyTaxPaid", "Property Tax Paid", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
+            PropertyFieldDefinition("societyFormation", "Society Formation / Apartment", FormFieldType.TEXT, placeholder = "e.g., Formed Society", listingTypes = setOf(LISTING_TYPE_SALE))
         )
     )
 )
@@ -195,8 +329,24 @@ fun defaultResidentialFieldValues(): Map<String, String> {
     return base
 }
 
+fun defaultCommercialFieldValues(): Map<String, String> {
+    val base = mutableMapOf(
+        "propertyPrice" to "",
+        "buildingName" to "",
+        "description" to "",
+        "state" to "",
+        "city" to "",
+        "nameStreetArea" to "",
+        "landmark" to ""
+    )
+    commercialSections.flatMap { it.fields }.forEach { field ->
+        base[field.id] = field.defaultValue
+    }
+    return base
+}
+
 fun isFieldVisible(
-    field: ResidentialFieldDefinition,
+    field: PropertyFieldDefinition,
     listingType: String,
     values: Map<String, String>
 ): Boolean {
