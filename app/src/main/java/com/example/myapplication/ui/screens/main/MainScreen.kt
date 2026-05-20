@@ -73,7 +73,8 @@ fun MainScreen(
     onNavigateToPropertyDetails: (String) -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToMyProperties: () -> Unit,
-    onNavigateToAddResidentialProperty: () -> Unit
+    onNavigateToAddResidentialProperty: () -> Unit,
+    onNavigateToAddCommercialProperty: () -> Unit
 ) {
     val navItems = listOf(
         BottomNavItem.Home,
@@ -91,33 +92,36 @@ fun MainScreen(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text("Add Property", style = MaterialTheme.typography.headlineSmall, color = PrimaryEnd)
                 Spacer(Modifier.height(8.dp))
-                Text("Choose the same 4 entry points as web. Residential is live first.", color = TextSecondary)
+                Text("Choose property category. Residential and Commercial are live.", color = TextSecondary)
                 Spacer(Modifier.height(16.dp))
                 propertyTypeOptions.forEach { option ->
+                    val isActive = option.id == "residential" || option.id == "commercial"
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 12.dp)
                             .clickable {
                                 showAddSheet = false
-                                if (option.id == "residential") {
-                                    onNavigateToAddResidentialProperty()
-                                } else {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("${option.title} will be wired after residential.")
+                                when (option.id) {
+                                    "residential" -> onNavigateToAddResidentialProperty()
+                                    "commercial" -> onNavigateToAddCommercialProperty()
+                                    else -> {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("${option.title} will be wired next.")
+                                        }
                                     }
                                 }
                             },
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (option.id == "residential") PrimaryStart.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+                            containerColor = if (isActive) PrimaryStart.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
                         )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(option.title, fontWeight = FontWeight.Bold, color = PrimaryEnd)
                             Spacer(Modifier.height(6.dp))
                             Text(option.description, color = TextSecondary)
-                            if (option.id != "residential") {
+                            if (!isActive) {
                                 Spacer(Modifier.height(10.dp))
                                 Text("Coming next", color = GoldStart, fontWeight = FontWeight.SemiBold)
                             }
