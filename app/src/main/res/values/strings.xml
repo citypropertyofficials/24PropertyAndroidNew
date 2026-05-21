@@ -87,6 +87,7 @@
     <string name="no_my_properties_draft_message">You don’t have any draft properties right now.</string>
     <string name="error_loading_my_properties">Failed to load your properties</string>
     <string name="property_actions">Property actions</string>
+    <string name="edit_property_action">Edit Property</string>
     <string name="view_details">View Details</string>
     <string name="delete_property_action">Delete Property</string>
     <string name="delete_property_title">Delete Property</string>

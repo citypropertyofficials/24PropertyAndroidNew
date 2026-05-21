@@ -48,6 +48,7 @@ import org.koin.androidx.compose.koinViewModel
 fun MyPropertiesScreen(
     onBack: () -> Unit,
     onNavigateToPropertyDetails: (String) -> Unit,
+    onEditProperty: (Property) -> Unit,
     viewModel: MyPropertiesViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
@@ -143,6 +144,9 @@ fun MyPropertiesScreen(
                                         isDeleting = contentState.deletingPropertyId == property.id,
                                         onViewDetails = {
                                             onNavigateToPropertyDetails(property.id)
+                                        },
+                                        onEdit = {
+                                            onEditProperty(property)
                                         },
                                         onDelete = {
                                             propertyToDelete = property

@@ -103,16 +103,16 @@ fun NavGraph(
                     navController.navigate(Screen.MyProperties.route)
                 },
                 onNavigateToAddResidentialProperty = {
-                    navController.navigate(Screen.AddResidentialProperty.route)
+                    navController.navigate(Screen.AddResidentialProperty.createRoute())
                 },
                 onNavigateToAddCommercialProperty = {
-                    navController.navigate(Screen.AddCommercialProperty.route)
+                    navController.navigate(Screen.AddCommercialProperty.createRoute())
                 },
                 onNavigateToAddIndustrialProperty = {
-                    navController.navigate(Screen.AddIndustrialProperty.route)
+                    navController.navigate(Screen.AddIndustrialProperty.createRoute())
                 },
                 onNavigateToAddLandProperty = {
-                    navController.navigate(Screen.AddLandProperty.route)
+                    navController.navigate(Screen.AddLandProperty.createRoute())
                 }
             )
         }
@@ -122,6 +122,15 @@ fun NavGraph(
                 onBack = { navController.popBackStack() },
                 onNavigateToPropertyDetails = { propertyId ->
                     navController.navigate(Screen.PropertyDetails.createRoute(propertyId))
+                },
+                onEditProperty = { property ->
+                    val route = when (property.propertyType.lowercase()) {
+                        "commercial" -> Screen.AddCommercialProperty.createRoute(property.id)
+                        "industrial" -> Screen.AddIndustrialProperty.createRoute(property.id)
+                        "land" -> Screen.AddLandProperty.createRoute(property.id)
+                        else -> Screen.AddResidentialProperty.createRoute(property.id)
+                    }
+                    navController.navigate(route)
                 }
             )
         }
@@ -132,25 +141,61 @@ fun NavGraph(
             )
         }
 
-        composable(route = Screen.AddResidentialProperty.route) {
+        composable(
+            route = Screen.AddResidentialProperty.route,
+            arguments = listOf(
+                navArgument("propertyId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
             AddResidentialPropertyScreen(
                 onBack = { navController.popBackStack() }
             )
         }
 
-        composable(route = Screen.AddCommercialProperty.route) {
+        composable(
+            route = Screen.AddCommercialProperty.route,
+            arguments = listOf(
+                navArgument("propertyId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
             AddCommercialPropertyScreen(
                 onBack = { navController.popBackStack() }
             )
         }
 
-        composable(route = Screen.AddIndustrialProperty.route) {
+        composable(
+            route = Screen.AddIndustrialProperty.route,
+            arguments = listOf(
+                navArgument("propertyId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
             AddIndustrialPropertyScreen(
                 onBack = { navController.popBackStack() }
             )
         }
 
-        composable(route = Screen.AddLandProperty.route) {
+        composable(
+            route = Screen.AddLandProperty.route,
+            arguments = listOf(
+                navArgument("propertyId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
             AddLandPropertyScreen(
                 onBack = { navController.popBackStack() }
             )
