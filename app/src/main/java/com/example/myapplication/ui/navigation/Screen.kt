@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     data object AddResidentialProperty : Screen("add_residential_property")
     data object AddCommercialProperty : Screen("add_commercial_property")
     data object AddIndustrialProperty : Screen("add_industrial_property")
+    data object AddLandProperty : Screen("add_land_property")
     data object PropertyDetails : Screen("property_details/{propertyId}") {
         fun createRoute(propertyId: String) = "property_details/$propertyId"
     }

@@ -173,5 +173,11 @@
     <string name="industrial_property_saved_draft">Industrial property saved as draft.</string>
     <string name="industrial_property_added_success">Industrial property added successfully.</string>
     <string name="complete_required_industrial_fields">Complete the required industrial property fields.</string>
+
+    <!-- Add Land Property -->
+    <string name="add_land_property">Add Land Property</string>
+    <string name="land_property_saved_draft">Land property saved as draft.</string>
+    <string name="land_property_added_success">Land property added successfully.</string>
+    <string name="complete_required_land_fields">Complete the required land property fields.</string>
 </resources>
 

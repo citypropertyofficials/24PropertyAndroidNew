@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.ui.screens.addproperty.propertyTypeOptions
+import com.example.myapplication.ui.screens.addproperty.AddLandPropertyScreen
 import com.example.myapplication.ui.screens.auctions.AuctionsScreen
 import com.example.myapplication.ui.screens.favorites.FavoritesScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
@@ -75,7 +76,8 @@ fun MainScreen(
     onNavigateToMyProperties: () -> Unit,
     onNavigateToAddResidentialProperty: () -> Unit,
     onNavigateToAddCommercialProperty: () -> Unit,
-    onNavigateToAddIndustrialProperty: () -> Unit
+    onNavigateToAddIndustrialProperty: () -> Unit,
+    onNavigateToAddLandProperty: () -> Unit
 ) {
     val navItems = listOf(
         BottomNavItem.Home,
@@ -93,10 +95,10 @@ fun MainScreen(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text("Add Property", style = MaterialTheme.typography.headlineSmall, color = PrimaryEnd)
                 Spacer(Modifier.height(8.dp))
-                Text("Choose property category. Residential and Commercial are live.", color = TextSecondary)
+                Text("Choose property category.", color = TextSecondary)
                 Spacer(Modifier.height(16.dp))
                 propertyTypeOptions.forEach { option ->
-                    val isActive = option.id == "residential" || option.id == "commercial" || option.id == "industrial"
+                    val isActive = option.id == "residential" || option.id == "commercial" || option.id == "industrial" || option.id == "land"
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -107,6 +109,7 @@ fun MainScreen(
                                     "residential" -> onNavigateToAddResidentialProperty()
                                     "commercial" -> onNavigateToAddCommercialProperty()
                                     "industrial" -> onNavigateToAddIndustrialProperty()
+                                    "land" -> onNavigateToAddLandProperty()
                                     else -> {
                                         scope.launch {
                                             snackbarHostState.showSnackbar("${option.title} will be wired next.")
