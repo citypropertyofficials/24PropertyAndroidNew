@@ -11,6 +11,7 @@ import java.util.UUID
 
 interface AddPropertyRepository {
     suspend fun getUserPropertyCount(userId: String): Int
+    suspend fun getProperty(propertyId: String): Map<String, Any?>?
     suspend fun createProperty(propertyData: Map<String, Any?>): String
     suspend fun updateProperty(propertyId: String, propertyData: Map<String, Any?>)
     suspend fun uploadPropertyImages(
@@ -18,6 +19,7 @@ interface AddPropertyRepository {
         imageUris: List<Uri>,
         contentResolver: ContentResolver
     ): List<String>
+    suspend fun deletePropertyImages(imageUrls: List<String>)
 }
 
 class AddPropertyRepositoryImpl(
@@ -32,6 +34,14 @@ class AddPropertyRepositoryImpl(
             .get()
             .await()
         return snapshot.size()
+    }
+
+    override suspend fun getProperty(propertyId: String): Map<String, Any?>? {
+        val snapshot = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES)
+            .document(propertyId)
+            .get()
+            .await()
+        return snapshot.data
     }
 
     override suspend fun createProperty(propertyData: Map<String, Any?>): String {
@@ -62,6 +72,14 @@ class AddPropertyRepositoryImpl(
             val ref = storage.reference.child(path)
             ref.putBytes(bytes).await()
             ref.downloadUrl.await().toString()
+        }
+    }
+
+    override suspend fun deletePropertyImages(imageUrls: List<String>) {
+        imageUrls.forEach { imageUrl ->
+            runCatching {
+                storage.getReferenceFromUrl(imageUrl).delete().await()
+            }
         }
     }
 }

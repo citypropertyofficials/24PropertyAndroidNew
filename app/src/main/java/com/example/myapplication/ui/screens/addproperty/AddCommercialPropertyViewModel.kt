@@ -2,15 +2,13 @@ package com.example.myapplication.ui.screens.addproperty
 
 import android.content.ContentResolver
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.repository.AddPropertyRepository
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.AuthResult
 import com.example.myapplication.utils.FirebaseConstants
-import com.example.myapplication.utils.encodeGeohash
-import com.example.myapplication.utils.resolveStateCode
-import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,15 +18,30 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class AddCommercialPropertyViewModel(
+    savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val addPropertyRepository: AddPropertyRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AddCommercialPropertyUiState())
+    private val propertyId: String? = savedStateHandle["propertyId"]
+
+    private val _uiState = MutableStateFlow(
+        AddCommercialPropertyUiState(
+            propertyId = propertyId,
+            isEditMode = !propertyId.isNullOrBlank(),
+            isInitialLoading = !propertyId.isNullOrBlank()
+        )
+    )
     val uiState: StateFlow<AddCommercialPropertyUiState> = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<AddCommercialPropertyEvent>()
     val events: SharedFlow<AddCommercialPropertyEvent> = _events.asSharedFlow()
+
+    init {
+        if (!propertyId.isNullOrBlank()) {
+            loadProperty(propertyId)
+        }
+    }
 
     fun updateListingType(value: String) {
         _uiState.value = _uiState.value.copy(listingType = value, fieldErrors = emptyMap())
@@ -61,6 +74,12 @@ class AddCommercialPropertyViewModel(
         _uiState.value = _uiState.value.copy(imageUris = _uiState.value.imageUris.filterNot { it == uri })
     }
 
+    fun removeExistingImage(imageUrl: String) {
+        _uiState.value = _uiState.value.copy(
+            existingImageUrls = _uiState.value.existingImageUrls.filterNot { it == imageUrl }
+        )
+    }
+
     fun updateLocation(location: SelectedLocation, suggestedFields: Map<String, String> = emptyMap()) {
         val nextValues = _uiState.value.fieldValues.toMutableMap()
         suggestedFields.forEach { (key, value) ->
@@ -83,7 +102,7 @@ class AddCommercialPropertyViewModel(
 
     private fun submit(contentResolver: ContentResolver, isDraft: Boolean) {
         val currentState = _uiState.value
-        if (currentState.isSavingDraft || currentState.isPublishing) return
+        if (currentState.isSavingDraft || currentState.isPublishing || currentState.isInitialLoading) return
 
         val errors = if (isDraft) emptyMap() else validate(currentState)
         if (errors.isNotEmpty()) {
@@ -111,38 +130,64 @@ class AddCommercialPropertyViewModel(
                 }
                 val ownerRole = authRepository.getCurrentUserRole() ?: FirebaseConstants.ROLE_USER
 
-                if (!isDraft && userData.maxPropertiesAllowed != null) {
+                if (!isDraft && currentState.propertyId == null && userData.maxPropertiesAllowed != null) {
                     val liveCount = addPropertyRepository.getUserPropertyCount(userId)
                     if (liveCount >= userData.maxPropertiesAllowed) {
                         error("You have reached your property limit (${liveCount}/${userData.maxPropertiesAllowed}).")
                     }
                 }
 
-                val payload = buildPropertyPayload(
-                    state = _uiState.value,
+                val draftPayload = buildCommercialPropertyPayload(
+                    state = currentState,
                     userId = userId,
                     ownerName = userData.name.ifBlank { "Property Owner" },
                     ownerEmail = userData.email,
                     ownerPhoto = userData.photoUrl,
                     ownerRole = ownerRole,
-                    isDraft = isDraft
+                    isDraft = isDraft,
+                    includeCreatedAt = true,
+                    imageUrls = emptyList()
                 )
-                val propertyId = addPropertyRepository.createProperty(payload)
-                if (_uiState.value.imageUris.isNotEmpty()) {
-                    val imageUrls = addPropertyRepository.uploadPropertyImages(
-                        propertyId = propertyId,
-                        imageUris = _uiState.value.imageUris,
+                val resolvedPropertyId = currentState.propertyId ?: addPropertyRepository.createProperty(draftPayload)
+
+                val removedImages = currentState.originalImageUrls.filterNot { imageUrl ->
+                    currentState.existingImageUrls.contains(imageUrl)
+                }
+                if (removedImages.isNotEmpty()) {
+                    addPropertyRepository.deletePropertyImages(removedImages)
+                }
+
+                val uploadedImageUrls = if (currentState.imageUris.isNotEmpty()) {
+                    addPropertyRepository.uploadPropertyImages(
+                        propertyId = resolvedPropertyId,
+                        imageUris = currentState.imageUris,
                         contentResolver = contentResolver
                     )
-                    addPropertyRepository.updateProperty(
-                        propertyId,
-                        mapOf(FirebaseConstants.FIELD_IMAGES to imageUrls)
-                    )
+                } else {
+                    emptyList()
                 }
+
+                val payload = buildCommercialPropertyPayload(
+                    state = currentState,
+                    userId = userId,
+                    ownerName = userData.name.ifBlank { "Property Owner" },
+                    ownerEmail = userData.email,
+                    ownerPhoto = userData.photoUrl,
+                    ownerRole = ownerRole,
+                    isDraft = isDraft,
+                    includeCreatedAt = false,
+                    imageUrls = buildImageList(currentState.existingImageUrls, uploadedImageUrls)
+                )
+                addPropertyRepository.updateProperty(resolvedPropertyId, payload)
 
                 _events.emit(
                     AddCommercialPropertyEvent.ShowMessage(
-                        if (isDraft) "Commercial property saved as draft." else "Commercial property added successfully."
+                        when {
+                            currentState.isEditMode && isDraft -> "Commercial property saved as draft."
+                            currentState.isEditMode -> "Commercial property updated successfully."
+                            isDraft -> "Commercial property saved as draft."
+                            else -> "Commercial property added successfully."
+                        }
                     )
                 )
                 _events.emit(AddCommercialPropertyEvent.PropertySaved)
@@ -176,83 +221,28 @@ class AddCommercialPropertyViewModel(
         return errors
     }
 
-    private fun buildPropertyPayload(
-        state: AddCommercialPropertyUiState,
-        userId: String,
-        ownerName: String,
-        ownerEmail: String,
-        ownerPhoto: String,
-        ownerRole: String,
-        isDraft: Boolean
-    ): Map<String, Any?> {
-        val values = state.fieldValues
-        val buildingName = values["buildingName"].orEmpty().trim()
-        val structuredAddress = listOf(
-            buildingName,
-            values["nameStreetArea"].orEmpty().trim(),
-            values["landmark"].orEmpty().trim(),
-            values["city"].orEmpty().trim(),
-            values["state"].orEmpty().trim()
-        ).filter { it.isNotBlank() }.joinToString(", ")
-        val location = state.selectedLocation
-        val geo = location?.let {
-            mapOf(
-                "lat" to it.lat,
-                "lng" to it.lng,
-                "placeId" to it.placeId,
-                "formattedAddress" to it.formattedAddress
-            )
-        }
-
-        val dynamicValues = values
-            .filterKeys { key ->
-                key !in setOf("propertyPrice", "buildingName", "description", "state", "city", "nameStreetArea", "landmark")
+    private fun loadProperty(propertyId: String) {
+        viewModelScope.launch {
+            try {
+                val property = addPropertyRepository.getProperty(propertyId)
+                    ?: error("Property not found.")
+                val images = property[FirebaseConstants.FIELD_IMAGES].asStringList()
+                _uiState.value = AddCommercialPropertyUiState(
+                    listingType = property[FirebaseConstants.FIELD_LISTING_TYPE].asString().ifBlank { LISTING_TYPE_RENT },
+                    fieldValues = property.baseFieldValues(defaultCommercialFieldValues()),
+                    amenities = property[FirebaseConstants.FIELD_AMENITIES].asStringList().toSet(),
+                    propertyId = propertyId,
+                    isEditMode = true,
+                    isInitialLoading = false,
+                    originalImageUrls = images,
+                    existingImageUrls = images,
+                    selectedLocation = property.selectedLocationOrNull(),
+                    mapsApiConfigured = _uiState.value.mapsApiConfigured
+                )
+            } catch (t: Throwable) {
+                _uiState.value = _uiState.value.copy(isInitialLoading = false)
+                _events.emit(AddCommercialPropertyEvent.ShowMessage(t.message ?: "Unable to load property."))
             }
-            .filterValues { it.isNotBlank() }
-            .toMutableMap<String, Any>()
-
-        // Normalize possessionStatus if present
-        values["possessionStatus"]?.let {
-            if (it.isNotBlank()) {
-                dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatus(it)
-            }
-        }
-
-        return mapOf(
-            FirebaseConstants.FIELD_NAME to if (buildingName.isBlank()) "Untitled Commercial Property" else buildingName,
-            FirebaseConstants.FIELD_DESCRIPTION to values["description"].orEmpty().trim(),
-            FirebaseConstants.FIELD_PRICE to values["propertyPrice"].orEmpty().toLongOrNull(),
-            FirebaseConstants.FIELD_PROPERTY_TYPE to COMMERCIAL_PROPERTY_TYPE,
-            FirebaseConstants.FIELD_LISTING_TYPE to state.listingType,
-            FirebaseConstants.FIELD_STATUS to if (isDraft) FirebaseConstants.PROPERTY_STATUS_DRAFT else FirebaseConstants.PROPERTY_STATUS_PUBLISHED,
-            FirebaseConstants.FIELD_BUILDING_NAME to buildingName,
-            FirebaseConstants.FIELD_ADDRESS to structuredAddress,
-            FirebaseConstants.FIELD_STATE to values["state"].orEmpty().trim(),
-            FirebaseConstants.FIELD_STATE_CODE to resolveStateCode(values["state"].orEmpty()),
-            FirebaseConstants.FIELD_CITY to values["city"].orEmpty().trim(),
-            FirebaseConstants.FIELD_NAME_STREET_AREA to values["nameStreetArea"].orEmpty().trim(),
-            FirebaseConstants.FIELD_LANDMARK to values["landmark"].orEmpty().trim(),
-            FirebaseConstants.FIELD_GEO to geo,
-            FirebaseConstants.FIELD_GEOHASH to encodeGeohash(location?.lat, location?.lng),
-            FirebaseConstants.FIELD_AMENITIES to state.amenities.toList(),
-            FirebaseConstants.FIELD_USER_ID to userId,
-            FirebaseConstants.FIELD_OWNER to userId,
-            FirebaseConstants.FIELD_OWNER_NAME to ownerName,
-            FirebaseConstants.FIELD_OWNER_EMAIL to ownerEmail,
-            FirebaseConstants.FIELD_OWNER_PHOTO to ownerPhoto,
-            FirebaseConstants.FIELD_OWNER_ROLE to ownerRole,
-            FirebaseConstants.FIELD_IS_ACTIVE to true,
-            FirebaseConstants.FIELD_CREATED_AT to FieldValue.serverTimestamp(),
-            FirebaseConstants.FIELD_UPDATED_AT to FieldValue.serverTimestamp(),
-            FirebaseConstants.FIELD_IMAGES to emptyList<String>()
-        ) + dynamicValues
-    }
-
-    private fun normalizePossessionStatus(value: String): String {
-        return when (value.trim().lowercase()) {
-            "ready to move", "ready possession" -> "ready_possession"
-            "under construction" -> "under_construction"
-            else -> value
         }
     }
 }

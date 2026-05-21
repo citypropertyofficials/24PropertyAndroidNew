@@ -76,6 +76,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.myapplication.ui.common.AppFullScreenLoading
 import com.example.myapplication.ui.common.AppOutlinedButton
 import com.example.myapplication.ui.common.AppPrimaryButton
 import com.example.myapplication.ui.theme.AccentColor
@@ -135,7 +136,7 @@ fun AddResidentialPropertyScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Residential Property") },
+                title = { Text(if (state.isEditMode) "Edit Residential Property" else "Add Residential Property") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -156,18 +157,23 @@ fun AddResidentialPropertyScreen(
                     text = "Save Draft",
                     onClick = { viewModel.saveDraft(context.contentResolver) },
                     modifier = Modifier.weight(1f),
-                    enabled = !state.isPublishing && !state.isSavingDraft
+                    enabled = !state.isPublishing && !state.isSavingDraft && !state.isInitialLoading
                 )
                 AppPrimaryButton(
-                    text = "Publish",
+                    text = if (state.isEditMode) "Save Changes" else "Publish",
                     onClick = { viewModel.publish(context.contentResolver) },
                     modifier = Modifier.weight(1f),
-                    enabled = !state.isPublishing && !state.isSavingDraft,
+                    enabled = !state.isPublishing && !state.isSavingDraft && !state.isInitialLoading,
                     isLoading = state.isPublishing
                 )
             }
         }
     ) { padding ->
+        if (state.isInitialLoading) {
+            AppFullScreenLoading()
+            return@Scaffold
+        }
+
         val imageLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetMultipleContents()
         ) { uris ->
@@ -209,8 +215,10 @@ fun AddResidentialPropertyScreen(
             }
             item {
                 ImagesSection(
+                    existingImageUrls = state.existingImageUrls,
                     imageUris = state.imageUris,
                     onAddImages = { imageLauncher.launch("image/*") },
+                    onRemoveExistingImage = viewModel::removeExistingImage,
                     onRemoveImage = viewModel::removeImage
                 )
             }
@@ -331,8 +339,10 @@ private fun ResidentialSectionCard(
 
 @Composable
 private fun ImagesSection(
+    existingImageUrls: List<String>,
     imageUris: List<Uri>,
     onAddImages: () -> Unit,
+    onRemoveExistingImage: (String) -> Unit,
     onRemoveImage: (Uri) -> Unit
 ) {
     SectionCard(title = "Property Images") {
@@ -342,10 +352,40 @@ private fun ImagesSection(
                 Spacer(Modifier.width(8.dp))
                 Text("Add Images")
             }
-            Text("${imageUris.size}/$MAX_PROPERTY_IMAGES selected", color = TextSecondary)
+            Text("${existingImageUrls.size + imageUris.size}/$MAX_PROPERTY_IMAGES selected", color = TextSecondary)
+        }
+        if (existingImageUrls.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text("Existing Images", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
+            ChunkedRows(items = existingImageUrls, columns = 3) { imageUrl ->
+                Box {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .clickable { onRemoveExistingImage(imageUrl) }
+                            .padding(4.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(14.dp))
+                    }
+                }
+            }
         }
         if (imageUris.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
+            Text("New Images", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
             ChunkedRows(items = imageUris, columns = 3) { uri ->
                 Box {
                     AsyncImage(

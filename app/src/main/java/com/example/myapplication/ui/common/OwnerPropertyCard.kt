@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
@@ -50,6 +51,7 @@ fun OwnerPropertyCard(
     property: Property,
     isDeleting: Boolean,
     onViewDetails: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -160,6 +162,19 @@ fun OwnerPropertyCard(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.edit_property_action)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onEdit()
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.view_details)) },
                                 leadingIcon = {
