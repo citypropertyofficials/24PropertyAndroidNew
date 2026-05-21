@@ -6,6 +6,7 @@ import com.example.myapplication.BuildConfig
 const val RESIDENTIAL_PROPERTY_TYPE = "residential"
 const val COMMERCIAL_PROPERTY_TYPE = "commercial"
 const val INDUSTRIAL_PROPERTY_TYPE = "industrial"
+const val LAND_PROPERTY_TYPE = "land"
 const val LISTING_TYPE_RENT = "rent"
 const val LISTING_TYPE_SALE = "sale"
 const val MAX_PROPERTY_IMAGES = 8
@@ -499,4 +500,189 @@ fun isFieldVisible(
     if (field.listingTypes.isNotEmpty() && listingType !in field.listingTypes) return false
     val rule = field.visibleWhen ?: return true
     return values[rule.fieldId].orEmpty() in rule.values
+}
+
+// Land Property Add/Edit Configuration
+data class AddLandPropertyUiState(
+    val listingType: String = LISTING_TYPE_RENT,
+    val fieldValues: Map<String, String> = defaultLandFieldValues(),
+    val amenities: Set<String> = emptySet(),
+    val imageUris: List<Uri> = emptyList(),
+    val selectedLocation: SelectedLocation? = null,
+    val fieldErrors: Map<String, String> = emptyMap(),
+    val isSavingDraft: Boolean = false,
+    val isPublishing: Boolean = false,
+    val mapsApiConfigured: Boolean = BuildConfig.MAPS_API_KEY.isNotBlank()
+)
+
+sealed class AddLandPropertyEvent {
+    data class ShowMessage(val message: String) : AddLandPropertyEvent()
+    data object PropertySaved : AddLandPropertyEvent()
+}
+
+val landAmenities = listOf(
+    "Water Supply",
+    "Electricity Connection",
+    "Drainage",
+    "Road Access",
+    "Boundary Wall",
+    "Corner Plot",
+    "Gated Community",
+    "Park Facing",
+    "Main Road Facing",
+    "Metro Nearby",
+    "School Nearby",
+    "Hospital Nearby"
+)
+
+val landSections = listOf(
+    PropertyFormSection(
+        title = "Land Features",
+        fields = listOf(
+            PropertyFieldDefinition(
+                "landType",
+                "Land Type",
+                FormFieldType.SELECT,
+                listOf("Residential Plot", "Commercial Plot", "Industrial Plot", "Agricultural Land", "Farm Land", "NA Plot", "NA Land"),
+                defaultValue = "Residential Plot"
+            ),
+            PropertyFieldDefinition(
+                "zoneType",
+                "Zone Type",
+                FormFieldType.SELECT,
+                listOf(
+                    "Agriculture Zone", "Green zone", "Green Zone-2", "Residential zone", "Commercial zone",
+                    "Industrial zone", "PSP - Public/Semi Public", "Public utility zone",
+                    "Traffic & transportation zone", "Recreational/Open space/Park", "Hill", "Hill-slope",
+                    "No development Zone", "Logistic/Warehouse Zone"
+                ),
+                defaultValue = "Agriculture Zone"
+            ),
+            PropertyFieldDefinition(
+                "naType",
+                "NA Type",
+                FormFieldType.SELECT,
+                listOf("No", "Residential NA", "Commercial NA", "Industrial NA", "Warehouse NA", "IT NA", "Resort NA"),
+                defaultValue = "No",
+                visibleWhen = FieldVisibilityRule("landType", setOf("NA Plot", "NA Land"))
+            ),
+            PropertyFieldDefinition(
+                "propertyArea",
+                "Area (sq ft)",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 5000",
+                required = true
+            ),
+            PropertyFieldDefinition(
+                "propertyAreaUnit",
+                "Area Unit",
+                FormFieldType.SELECT,
+                listOf("sq ft", "sq mtr", "Acre", "Hector"),
+                defaultValue = "sq ft"
+            ),
+            PropertyFieldDefinition(
+                "areaAcres",
+                "Area (Acres)",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 0.11"
+            ),
+            PropertyFieldDefinition(
+                "numberOfPlots",
+                "Number of Plots",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 4"
+            ),
+            PropertyFieldDefinition(
+                "plotLength",
+                "Plot Length (ft)",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 100"
+            ),
+            PropertyFieldDefinition(
+                "plotBreadth",
+                "Plot Breadth (ft)",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 50"
+            ),
+            PropertyFieldDefinition(
+                "landFacing",
+                "Facing",
+                FormFieldType.SELECT,
+                listOf("North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"),
+                defaultValue = "North"
+            ),
+            PropertyFieldDefinition(
+                "roadWidth",
+                "Road Width",
+                FormFieldType.SELECT,
+                listOf("Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft"),
+                defaultValue = "20-30 ft"
+            ),
+            PropertyFieldDefinition(
+                "frontage",
+                "Frontage (ft)",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 80"
+            ),
+            PropertyFieldDefinition(
+                "roadAccess",
+                "Road Access (ft)",
+                FormFieldType.NUMBER,
+                placeholder = "e.g., 30"
+            ),
+            PropertyFieldDefinition(
+                "priceNegotiable",
+                "Price Negotiable",
+                FormFieldType.RADIO,
+                listOf("Yes", "No"),
+                listingTypes = setOf(LISTING_TYPE_SALE),
+                defaultValue = "No"
+            ),
+            PropertyFieldDefinition(
+                "rentNegotiable",
+                "Is Rent Negotiable",
+                FormFieldType.RADIO,
+                listOf("Yes", "No"),
+                listingTypes = setOf(LISTING_TYPE_RENT),
+                defaultValue = "No"
+            ),
+            PropertyFieldDefinition(
+                "sewageType",
+                "Sewage",
+                FormFieldType.SELECT,
+                listOf("None", "Open", "Underground"),
+                defaultValue = "None"
+            ),
+            PropertyFieldDefinition(
+                "landStatus",
+                "Status",
+                FormFieldType.SELECT,
+                listOf("Clear Title", "Litigation", "Under Development", "Ready for Construction"),
+                defaultValue = "Clear Title"
+            )
+        )
+    ),
+    PropertyFormSection(
+        title = "Land Amenities",
+        fields = landAmenities.map { amenity ->
+            PropertyFieldDefinition(id = amenity, label = amenity, type = FormFieldType.AMENITY)
+        }
+    )
+)
+
+fun defaultLandFieldValues(): Map<String, String> {
+    val base = mutableMapOf(
+        "propertyName" to "",
+        "propertyPrice" to "",
+        "propertyAddress" to "",
+        "description" to "",
+        "state" to "",
+        "city" to "",
+        "nameStreetArea" to "",
+        "landmark" to ""
+    )
+    landSections.flatMap { it.fields }.forEach { field ->
+        base[field.id] = field.defaultValue
+    }
+    return base
 }
