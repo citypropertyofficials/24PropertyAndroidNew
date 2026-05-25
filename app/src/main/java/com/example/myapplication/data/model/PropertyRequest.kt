@@ -8,6 +8,7 @@ data class PropertyRequest(
     val userName: String = "",
     val userEmail: String = "",
     val userMobile: String = "",
+    val userRole: String = "user",
     val propertyType: String = "",
     val area: String = "",
     val minBudget: Long = 0,

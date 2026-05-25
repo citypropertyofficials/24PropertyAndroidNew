@@ -24,8 +24,19 @@ interface PropertyRepository {
         viewerRole: String
     ): PropertyPageResult
 
-    /** Fetch a single property by ID for the details screen. Returns null if not found. */
-    suspend fun fetchPropertyById(propertyId: String): Property?
+    /**
+     * Fetch a single property by ID for the details screen.
+     * Returns null if:
+     *  - not found
+     *  - viewer does not have access to developer-owned content
+     *  - property is a draft and viewer is not the owner
+     * Matches web's loadPropertyDetails() guards exactly.
+     */
+    suspend fun fetchPropertyById(
+        propertyId: String,
+        viewerRole: String = "user",
+        viewerUserId: String? = null
+    ): Property?
 
     /** Fetch the mobile number of the property owner. Returns null if not found. */
     suspend fun getOwnerMobileNumber(ownerUid: String): String?
@@ -190,14 +201,31 @@ class PropertyRepositoryImpl(
         )
     }
 
-    override suspend fun fetchPropertyById(propertyId: String): Property? {
+    override suspend fun fetchPropertyById(
+        propertyId: String,
+        viewerRole: String,
+        viewerUserId: String?
+    ): Property? {
         return try {
             val doc = firestore
                 .collection(FirebaseConstants.COLLECTION_PROPERTIES)
                 .document(propertyId)
                 .get()
                 .await()
-            if (doc.exists()) mapToProperty(doc) else null
+            if (!doc.exists()) return null
+
+            val property = mapToProperty(doc) ?: return null
+
+            // Guard 1: Developer-owned content is hidden from non-developers
+            // Matches: canAccessDeveloperOwnedContent(propertyData.ownerRole, viewerRole)
+            if (!canAccessDeveloperOwnedContent(property.ownerRole, viewerRole)) return null
+
+            // Guard 2: Draft properties are only visible to their owner
+            // Matches: isPropertyDraft(data) && owner !== viewerUserId && userId !== viewerUserId
+            val isDraft = property.status == FirebaseConstants.PROPERTY_STATUS_DRAFT
+            if (isDraft && property.owner != viewerUserId) return null
+
+            property
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -267,6 +295,10 @@ class PropertyRepositoryImpl(
 
             // Owner
             owner = str(data, FirebaseConstants.FIELD_OWNER),
+            ownerName = str(data, FirebaseConstants.FIELD_OWNER_NAME),
+            ownerEmail = str(data, FirebaseConstants.FIELD_OWNER_EMAIL),
+            ownerMobile = str(data, FirebaseConstants.FIELD_OWNER_MOBILE),
+            ownerPhoto = str(data, FirebaseConstants.FIELD_OWNER_PHOTO),
 
             // Description & Amenities
             description = str(data, FirebaseConstants.FIELD_DESCRIPTION),

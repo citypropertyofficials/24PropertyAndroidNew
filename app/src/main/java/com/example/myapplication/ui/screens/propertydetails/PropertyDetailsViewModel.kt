@@ -3,8 +3,10 @@ package com.example.myapplication.ui.screens.propertydetails
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Property
+import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.FavoritesRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.utils.FirebaseConstants
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -37,7 +39,8 @@ sealed class PropertyDetailsEvent {
 
 class PropertyDetailsViewModel(
     private val propertyRepository: PropertyRepository,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesRepository: FavoritesRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PropertyDetailsUiState>(PropertyDetailsUiState.Loading)
@@ -62,12 +65,18 @@ class PropertyDetailsViewModel(
         viewModelScope.launch {
             _uiState.value = PropertyDetailsUiState.Loading
             try {
-                val property = propertyRepository.fetchPropertyById(propertyId)
+                val viewerRole = authRepository.getCurrentUserRole() ?: FirebaseConstants.ROLE_USER
+                val viewerUserId = authRepository.getCurrentUserId()
+                val property = propertyRepository.fetchPropertyById(
+                    propertyId = propertyId,
+                    viewerRole = viewerRole,
+                    viewerUserId = viewerUserId
+                )
                 if (property != null) {
                     _uiState.value = PropertyDetailsUiState.Loaded(property)
                     _currentImageIndex.value = 0
                 } else {
-                    _uiState.value = PropertyDetailsUiState.Error("Property not found")
+                    _uiState.value = PropertyDetailsUiState.Error("Property not found or not accessible")
                 }
             } catch (e: Exception) {
                 _uiState.value = PropertyDetailsUiState.Error(
@@ -107,7 +116,11 @@ class PropertyDetailsViewModel(
         val property = (uiState.value as? PropertyDetailsUiState.Loaded)?.property ?: return
         viewModelScope.launch {
             try {
-                val mobile = propertyRepository.getOwnerMobileNumber(property.owner)
+                val mobile = if (property.ownerMobile.isNotBlank()) {
+                    property.ownerMobile
+                } else {
+                    propertyRepository.getOwnerMobileNumber(property.owner)
+                }
                 if (!mobile.isNullOrBlank()) {
                     _events.emit(PropertyDetailsEvent.DialNumber(mobile))
                 } else {
@@ -124,7 +137,11 @@ class PropertyDetailsViewModel(
         val property = (uiState.value as? PropertyDetailsUiState.Loaded)?.property ?: return
         viewModelScope.launch {
             try {
-                val mobile = propertyRepository.getOwnerMobileNumber(property.owner)
+                val mobile = if (property.ownerMobile.isNotBlank()) {
+                    property.ownerMobile
+                } else {
+                    propertyRepository.getOwnerMobileNumber(property.owner)
+                }
                 if (!mobile.isNullOrBlank()) {
                     val msg = buildShareMessage(property)
                     _events.emit(PropertyDetailsEvent.OpenWhatsApp(mobile, msg))
