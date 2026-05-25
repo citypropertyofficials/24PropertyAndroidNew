@@ -44,11 +44,60 @@ class AddPropertyRepositoryImpl(
         return snapshot.data
     }
 
+    /**
+     * Creates a new property document using a Firestore transaction to atomically assign
+     * a sequential uniqueId from the counters/propertyId document.
+     * Matches the web's addProperty() transaction logic exactly:
+     *   - Reads counters/propertyId for the current ID
+     *   - Computes the next ID (A000001, A000002 ... A999999, B000000 ...)
+     *   - Sets property data + uniqueId + isActive + createdAt + updatedAt atomically
+     *   - Updates the counter document
+     */
     override suspend fun createProperty(propertyData: Map<String, Any?>): String {
-        val docRef = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES).document()
-        val filtered = propertyData.filterValues { it != null }
-        docRef.set(filtered).await()
-        return docRef.id
+        val counterRef = firestore
+            .collection(FirebaseConstants.COLLECTION_COUNTERS)
+            .document(FirebaseConstants.COUNTER_DOC_PROPERTY_ID)
+
+        val newPropertyRef = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES).document()
+
+        firestore.runTransaction { transaction ->
+            val counterDoc = transaction.get(counterRef)
+
+            val nextId = if (!counterDoc.exists()) {
+                "A000000"
+            } else {
+                val currentId = counterDoc.getString(FirebaseConstants.COUNTER_FIELD_CURRENT_ID) ?: "A000000"
+                getNextPropertyId(currentId)
+            }
+
+            val filtered = propertyData.filterValues { it != null }.toMutableMap<String, Any?>()
+            filtered[FirebaseConstants.FIELD_UNIQUE_ID] = nextId
+            filtered[FirebaseConstants.FIELD_IS_ACTIVE] = true
+            filtered[FirebaseConstants.FIELD_CREATED_AT] = FieldValue.serverTimestamp()
+            filtered[FirebaseConstants.FIELD_UPDATED_AT] = FieldValue.serverTimestamp()
+
+            transaction.set(newPropertyRef, filtered)
+            transaction.set(counterRef, mapOf(FirebaseConstants.COUNTER_FIELD_CURRENT_ID to nextId))
+        }.await()
+
+        return newPropertyRef.id
+    }
+
+    /**
+     * Generates the next sequential property ID.
+     * Examples: A000000 -> A000001, A999999 -> B000000
+     * Matches the web's getNextId() function exactly.
+     */
+    private fun getNextPropertyId(currentId: String): String {
+        if (currentId.length < 2) return "A000000"
+        val letter = currentId[0]
+        val number = currentId.substring(1).toIntOrNull() ?: 0
+        return if (number < 999999) {
+            "$letter${(number + 1).toString().padStart(6, '0')}"
+        } else {
+            val nextLetter = (letter.code + 1).toChar()
+            "${nextLetter}000000"
+        }
     }
 
     override suspend fun updateProperty(propertyId: String, propertyData: Map<String, Any?>) {
@@ -58,6 +107,73 @@ class AddPropertyRepositoryImpl(
             .document(propertyId)
             .update(filtered)
             .await()
+        
+        syncInterestedPropertySnapshots(propertyId)
+    }
+
+    private suspend fun syncInterestedPropertySnapshots(propertyId: String) {
+        try {
+            val doc = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES)
+                .document(propertyId)
+                .get()
+                .await()
+
+            if (!doc.exists()) return
+            val currentData = doc.data ?: return
+
+            val interestedUsersSnapshot = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES)
+                .document(propertyId)
+                .collection("interestedUsers")
+                .get()
+                .await()
+
+            if (!interestedUsersSnapshot.isEmpty) {
+                val name = currentData[FirebaseConstants.FIELD_NAME] as? String ?: ""
+                val propertyType = currentData[FirebaseConstants.FIELD_PROPERTY_TYPE] as? String ?: ""
+                val listingType = currentData[FirebaseConstants.FIELD_LISTING_TYPE] as? String ?: ""
+                val price = (currentData[FirebaseConstants.FIELD_PRICE] as? Number)?.toDouble() ?: 0.0
+                val rent = (currentData[FirebaseConstants.FIELD_RENT] as? Number)?.toDouble() ?: price
+
+                val images = (currentData[FirebaseConstants.FIELD_IMAGES] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                val primaryImage = images.firstOrNull { it.isNotBlank() }
+
+                val cityState = currentData[FirebaseConstants.FIELD_CITY_STATE] as? String ?: ""
+                val city = cityState.substringBefore(",").trim()
+                val state = cityState.substringAfter(",", "").trim()
+
+                val owner = currentData[FirebaseConstants.FIELD_OWNER] as? String ?: ""
+                val isActive = currentData[FirebaseConstants.FIELD_IS_ACTIVE] as? Boolean ?: true
+                val status = currentData[FirebaseConstants.FIELD_STATUS] as? String ?: ""
+
+                val propertySnapshotData = hashMapOf(
+                    "propertyName" to name,
+                    "propertyType" to propertyType,
+                    "listingType" to listingType,
+                    "price" to if (listingType == "rent") rent else price,
+                    "primaryImage" to primaryImage,
+                    "city" to city,
+                    "state" to state,
+                    "ownerId" to owner,
+                    "isActive" to isActive,
+                    "status" to status,
+                    FirebaseConstants.FIELD_UPDATED_AT to FieldValue.serverTimestamp()
+                )
+
+                val batch = firestore.batch()
+                interestedUsersSnapshot.documents.forEach { userDoc ->
+                    val interestedUserId = userDoc.id
+                    val userInterestRef = firestore.collection(FirebaseConstants.COLLECTION_USERS)
+                        .document(interestedUserId)
+                        .collection("interestedProperties")
+                        .document(propertyId)
+
+                    batch.set(userInterestRef, propertySnapshotData, com.google.firebase.firestore.SetOptions.merge())
+                }
+                batch.commit().await()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override suspend fun uploadPropertyImages(

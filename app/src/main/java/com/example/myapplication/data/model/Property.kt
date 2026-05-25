@@ -26,6 +26,10 @@ data class Property(
 
     // ── Owner / Contact ───────────────────────────────────────────
     val owner: String = "",          // owner UID – used to fetch mobile number
+    val ownerName: String = "",
+    val ownerEmail: String = "",
+    val ownerMobile: String = "",
+    val ownerPhoto: String = "",
 
     // ── Description & Amenities ───────────────────────────────────
     val description: String = "",

@@ -7,6 +7,9 @@ object FirebaseConstants {
     const val COLLECTION_ROLE_REQUESTS = "roleRequests"
     const val COLLECTION_PROPERTY_REQUESTS = "propertyRequests"
     const val COLLECTION_FAVORITES = "favorites"
+    const val COLLECTION_COUNTERS = "counters"
+    const val COUNTER_DOC_PROPERTY_ID = "propertyId"
+    const val COUNTER_FIELD_CURRENT_ID = "currentId"
 
     const val FIELD_NAME = "name"
     const val FIELD_EMAIL = "email"
@@ -25,6 +28,7 @@ object FirebaseConstants {
     const val FIELD_DELETED_BY = "deletedBy"
     const val FIELD_OWNER_ROLE = "ownerRole"
     const val FIELD_USER_ID = "userId"
+    const val FIELD_USER_ROLE = "userRole"
     const val FIELD_REQUESTED_ROLE = "requestedRole"
     const val FIELD_PREFERRED_LOCATIONS = "preferredLocations"
 
@@ -136,6 +140,7 @@ object FirebaseConstants {
     const val FIELD_WATER_CHARGES_INCLUDED = "waterChargesIncluded"
     const val FIELD_OWNER_NAME = "ownerName"
     const val FIELD_OWNER_EMAIL = "ownerEmail"
+    const val FIELD_OWNER_MOBILE = "ownerMobile"
     const val FIELD_OWNER_PHOTO = "ownerPhoto"
 
     const val STORAGE_PROFILE_IMAGES = "profile-images"

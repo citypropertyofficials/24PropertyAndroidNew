@@ -21,6 +21,7 @@ interface AuthRepository {
 
     // Profile
     suspend fun updateUserProfile(userId: String, profileData: Map<String, Any>): AuthResult<Unit>
+    suspend fun deleteUserAccount(userId: String): AuthResult<Unit>
 
     // Role Requests
     suspend fun submitRoleRequest(userId: String, requestedRole: String): AuthResult<String>
