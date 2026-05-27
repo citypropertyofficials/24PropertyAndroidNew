@@ -10,10 +10,12 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import android.util.Log
 
 class AuthRepositoryImpl(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val interestedRepository: InterestedRepository
 ) : AuthRepository {
 
     private val superAdminEmails = listOf(
@@ -333,6 +335,18 @@ class AuthRepositoryImpl(
                     batch.update(doc.reference, updateMap)
                 }
                 batch.commit().await()
+            }
+
+            // 3b. Cascade: sync interested property snapshots for each owned property
+            // Matches web's myPropertiesService.js syncPropertiesOwnerProfileSnapshots L368-376
+            if (!propertiesSnapshot.isEmpty) {
+                for (doc in propertiesSnapshot.documents) {
+                    try {
+                        interestedRepository.syncInterestedPropertySnapshots(doc.id)
+                    } catch (e: Exception) {
+                        Log.e("AuthRepo", "Error cascading interested sync for property ${doc.id}", e)
+                    }
+                }
             }
 
             // 4. Sync Interested Users snapshots (collection group query group sync)

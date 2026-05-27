@@ -51,7 +51,8 @@ data class PropertyPageResult(
 )
 
 class PropertyRepositoryImpl(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val interestedRepository: InterestedRepository
 ) : PropertyRepository {
 
     private companion object {
@@ -259,6 +260,13 @@ class PropertyRepositoryImpl(
                 )
             )
             .await()
+
+        // Cascade: sync interested property snapshots (matches web's myPropertiesService.js:151)
+        try {
+            interestedRepository.syncInterestedPropertySnapshots(propertyId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cascading interested sync after delete for $propertyId", e)
+        }
     }
 
     private fun str(data: Map<String, Any?>, key: String): String =
@@ -392,6 +400,9 @@ class PropertyRepositoryImpl(
             dampUpsIncluded = str(data, FirebaseConstants.FIELD_DAMP_UPS_INCLUDED),
             electricityIncluded = str(data, FirebaseConstants.FIELD_ELECTRICITY_INCLUDED),
             waterChargesIncluded = str(data, FirebaseConstants.FIELD_WATER_CHARGES_INCLUDED),
+
+            // Interested
+            interestedCount = (data[FirebaseConstants.FIELD_INTERESTED_COUNT] as? Number)?.toInt() ?: 0,
         )
     }
 

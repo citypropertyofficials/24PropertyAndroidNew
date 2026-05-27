@@ -160,6 +160,18 @@ object FirebaseConstants {
     const val PROPERTY_STATUS_PUBLISHED = "published"
 
     const val PROPERTY_LIMIT_USER = 3
+
+    // Interested feature subcollections
+    const val SUBCOLLECTION_INTERESTED_PROPERTIES = "interestedProperties"
+    const val SUBCOLLECTION_INTERESTED_USERS = "interestedUsers"
+
+    // Interested feature fields
+    const val FIELD_INTERESTED_COUNT = "interestedCount"
+    const val FIELD_LAST_INTERESTED_AT = "lastInterestedAt"
+    const val FIELD_PRIMARY_IMAGE = "primaryImage"
+    const val FIELD_PROPERTY_ID = "propertyId"
+    const val FIELD_PROPERTY_NAME = "propertyName"
+    const val FIELD_STATE_FIELD = "state"
 }
 
 object NavigationRoutes {

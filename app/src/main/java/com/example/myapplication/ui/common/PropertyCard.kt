@@ -2,15 +2,26 @@ package com.example.myapplication.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,25 +30,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.myapplication.R
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.ui.theme.PrimaryStart
-
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 
 @Composable
 fun PropertyCard(
     property: Property,
     isFavorite: Boolean = false,
     onFavoriteClick: () -> Unit = {},
+    isInterested: Boolean = false,
+    isInterestedLoading: Boolean = false,
+    onInterestedClick: () -> Unit = {},
+    isOwner: Boolean = false,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -143,7 +154,77 @@ fun PropertyCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                // Interested Button — hidden for property owner (matches web's PropertyCard.jsx)
+                if (!isOwner) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    InterestedButton(
+                        isInterested = isInterested,
+                        isLoading = isInterestedLoading,
+                        interestedCount = property.interestedCount,
+                        onClick = onInterestedClick
+                    )
+                }
             }
+        }
+    }
+}
+
+/**
+ * "Mark Interested" / "Interested" button matching web's PropertyCard.jsx
+ * Shows star icon with count, amber/warning color when interested.
+ */
+@Composable
+private fun InterestedButton(
+    isInterested: Boolean,
+    isLoading: Boolean,
+    interestedCount: Int,
+    onClick: () -> Unit
+) {
+    val bgColor = if (isInterested) Color(0xFFFFA726).copy(alpha = 0.15f) else Color(0xFFF5F5F5)
+    val contentColor = if (isInterested) Color(0xFFE65100) else Color(0xFF757575)
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .clickable(enabled = !isLoading) { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = contentColor
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = null,
+                tint = if (isInterested) Color(0xFFFFA726) else Color(0xFFBDBDBD),
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = if (isInterested) {
+                stringResource(R.string.interested)
+            } else {
+                stringResource(R.string.mark_interested)
+            },
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (isInterested) FontWeight.Bold else FontWeight.Medium,
+            color = contentColor
+        )
+        if (interestedCount > 0) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "($interestedCount)",
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = 0.7f)
+            )
         }
     }
 }

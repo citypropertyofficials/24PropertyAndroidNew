@@ -45,6 +45,9 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsState()
     val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val interestedIds by viewModel.interestedIds.collectAsState()
+    val interestedLoadingMap by viewModel.interestedLoadingMap.collectAsState()
+    val currentUserId = viewModel.currentUserId
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
@@ -85,6 +88,10 @@ fun HomeScreen(
                                 property = property,
                                 isFavorite = favoriteIds.contains(property.id),
                                 onFavoriteClick = { viewModel.toggleFavorite(property.id) },
+                                isInterested = interestedIds.contains(property.id),
+                                isInterestedLoading = interestedLoadingMap[property.id] == true,
+                                onInterestedClick = { viewModel.toggleInterested(property.id) },
+                                isOwner = currentUserId != null && property.owner == currentUserId,
                                 onClick = { onNavigateToPropertyDetails(property.id) }
                             )
                         }
