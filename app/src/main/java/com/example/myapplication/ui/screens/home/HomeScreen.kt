@@ -2,6 +2,7 @@ package com.example.myapplication.ui.screens.home
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,9 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -44,6 +48,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,18 +58,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.common.AppFullScreenLoading
 import com.example.myapplication.ui.common.PropertyCard
 import com.example.myapplication.ui.theme.BackgroundPrimary
 import com.example.myapplication.ui.theme.BorderColor
 import com.example.myapplication.ui.theme.PrimaryEnd
 import com.example.myapplication.ui.theme.PrimaryStart
+import com.example.myapplication.ui.theme.TextPrimary
 import com.example.myapplication.ui.theme.TextSecondary
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.AutocompletePrediction
@@ -278,21 +286,23 @@ private fun HomeSearchShell(
             )
         }
 
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
-            listOf(
-                HOME_PROPERTY_TYPE_RESIDENTIAL to "Residential",
-                HOME_PROPERTY_TYPE_COMMERCIAL to "Commercial",
-                HOME_PROPERTY_TYPE_INDUSTRIAL to "Industrial",
-                HOME_PROPERTY_TYPE_LAND to "Land"
-            ).forEach { (type, label) ->
+            items(
+                listOf(
+                    HOME_PROPERTY_TYPE_RESIDENTIAL to "Residential",
+                    HOME_PROPERTY_TYPE_COMMERCIAL to "Commercial",
+                    HOME_PROPERTY_TYPE_INDUSTRIAL to "Industrial",
+                    HOME_PROPERTY_TYPE_LAND to "Land"
+                )
+            ) { (type, label) ->
                 PropertyTypePill(
                     label = label,
                     selected = state.selectedPropertyType == type,
-                    onClick = { onPropertyTypeChange(type) },
-                    modifier = Modifier.weight(1f)
+                    onClick = { onPropertyTypeChange(type) }
                 )
             }
         }
@@ -356,20 +366,41 @@ private fun PropertyTypePill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) PrimaryStart else Color.White,
+        label = "pill_bg"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) Color.White else TextPrimary,
+        label = "pill_text"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) PrimaryStart else BorderColor,
+        label = "pill_border"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (selected) 6.dp else 0.dp,
+        label = "pill_elevation"
+    )
+
     Box(
         modifier = modifier
-            .background(
-                color = if (selected) PrimaryEnd else Color.White,
-                shape = RoundedCornerShape(18.dp)
+            .shadow(elevation, RoundedCornerShape(999.dp))
+            .border(
+                width = 1.5.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(999.dp)
             )
+            .background(backgroundColor, RoundedCornerShape(999.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            color = if (selected) Color.White else PrimaryEnd,
-            fontWeight = FontWeight.SemiBold,
+            color = contentColor,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+            fontSize = 13.sp,
             textAlign = TextAlign.Center
         )
     }
@@ -523,6 +554,19 @@ private fun HomeFilterDialog(
         getFilterDefinitions(selectedPropertyType, priceRange)
     }
 
+    val activeFilterCount = remember(draftFilters, searchAreas) {
+        var count = 0
+        draftFilters.forEach { (key, value) ->
+            when (value) {
+                is List<*> -> if ((value as? List<String>)?.isNotEmpty() == true) count++
+                is String -> if (value.isNotBlank()) count++
+                is Int, is Float -> if (!key.startsWith("price") || value != priceRange.min.toInt() && value != priceRange.max.toInt()) count++
+            }
+        }
+        if (searchAreas.isNotEmpty()) count++
+        count
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -532,7 +576,7 @@ private fun HomeFilterDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp),
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -560,67 +604,87 @@ private fun HomeFilterDialog(
                 }
                 if (searchAreas.isNotEmpty()) {
                     item {
-                        Column {
-                            Text("Search Radius", fontWeight = FontWeight.SemiBold)
-                            Text("$radiusKm km radius", color = PrimaryStart)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Search Radius",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Text("$radiusKm km", color = PrimaryStart, fontWeight = FontWeight.SemiBold)
                             androidx.compose.material3.Slider(
                                 value = radiusKm.toFloat(),
                                 onValueChange = { radiusKm = it.toInt() },
                                 valueRange = 1f..20f,
-                                steps = 18
+                                steps = 18,
+                                colors = androidx.compose.material3.SliderDefaults.colors(
+                                    thumbColor = PrimaryStart,
+                                    activeTrackColor = PrimaryStart,
+                                    inactiveTrackColor = BorderColor
+                                )
                             )
                         }
                     }
                 }
                 items(filters, key = { it.id }) { filter ->
-                    when (filter.type) {
-                        FilterControlType.OPTIONS -> {
-                            DropdownFilterField(
-                                label = filter.label,
-                                options = filter.options,
-                                selectedValue = draftFilters[filter.id] as? String ?: "Any",
-                                onValueSelected = { draftFilters = draftFilters.toMutableMap().apply { put(filter.id, it) } }
-                            )
-                        }
-                        FilterControlType.RANGE -> {
-                            RangeFilterField(
-                                label = filter.label,
-                                min = filter.range!!.min,
-                                max = filter.range.max,
-                                step = filter.range.step,
-                                start = (draftFilters["priceMin"] as? Int ?: filter.range.min.toInt()).toFloat(),
-                                end = (draftFilters["priceMax"] as? Int ?: filter.range.max.toInt()).toFloat(),
-                                onRangeChange = { minValue, maxValue ->
-                                    draftFilters = draftFilters.toMutableMap().apply {
-                                        put("priceMin", minValue.toInt())
-                                        put("priceMax", maxValue.toInt())
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(BorderColor)
+                        )
+                        when (filter.type) {
+                            FilterControlType.OPTIONS -> {
+                                val selectedList = (draftFilters[filter.id] as? List<String>) ?: emptyList()
+                                MultiSelectChipField(
+                                    label = filter.label,
+                                    options = filter.options,
+                                    selectedValues = selectedList,
+                                    onValuesChanged = { draftFilters = draftFilters.toMutableMap().apply { put(filter.id, it) } }
+                                )
+                            }
+                            FilterControlType.RANGE -> {
+                                RangeFilterField(
+                                    label = filter.label,
+                                    min = filter.range!!.min,
+                                    max = filter.range.max,
+                                    step = filter.range.step,
+                                    start = (draftFilters["priceMin"] as? Int ?: filter.range.min.toInt()).toFloat(),
+                                    end = (draftFilters["priceMax"] as? Int ?: filter.range.max.toInt()).toFloat(),
+                                    onRangeChange = { minValue, maxValue ->
+                                        draftFilters = draftFilters.toMutableMap().apply {
+                                            put("priceMin", minValue.toInt())
+                                            put("priceMax", maxValue.toInt())
+                                        }
                                     }
-                                }
-                            )
-                        }
-                        FilterControlType.RANGE_PAIR -> {
-                            RangeFilterField(
-                                label = filter.label,
-                                min = filter.range!!.min,
-                                max = filter.range.max,
-                                step = filter.range.step,
-                                start = (draftFilters[filter.minKey] as? Int ?: filter.range.min.toInt()).toFloat(),
-                                end = (draftFilters[filter.maxKey] as? Int ?: filter.range.max.toInt()).toFloat(),
-                                suffix = " sq ft",
-                                onRangeChange = { minValue, maxValue ->
-                                    draftFilters = draftFilters.toMutableMap().apply {
-                                        put(filter.minKey, minValue.toInt())
-                                        put(filter.maxKey, maxValue.toInt())
+                                )
+                            }
+                            FilterControlType.RANGE_PAIR -> {
+                                RangeFilterField(
+                                    label = filter.label,
+                                    min = filter.range!!.min,
+                                    max = filter.range.max,
+                                    step = filter.range.step,
+                                    start = (draftFilters[filter.minKey] as? Int ?: filter.range.min.toInt()).toFloat(),
+                                    end = (draftFilters[filter.maxKey] as? Int ?: filter.range.max.toInt()).toFloat(),
+                                    suffix = " sq ft",
+                                    onRangeChange = { minValue, maxValue ->
+                                        draftFilters = draftFilters.toMutableMap().apply {
+                                            put(filter.minKey, minValue.toInt())
+                                            put(filter.maxKey, maxValue.toInt())
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
                     onClick = {
@@ -641,7 +705,11 @@ private fun HomeFilterDialog(
                         val cleaned = buildMap<String, Any> {
                             draftFilters.forEach { (key, value) ->
                                 when (value) {
-                                    is String -> if (value.isNotBlank() && value != "Any") put(key, value)
+                                    is List<*> -> {
+                                        val list = (value as? List<String>)?.filter { it.isNotBlank() }
+                                        if (!list.isNullOrEmpty()) put(key, list)
+                                    }
+                                    is String -> if (value.isNotBlank()) put(key, value)
                                     is Int -> put(key, value)
                                     is Float -> put(key, value.toInt())
                                 }
@@ -656,7 +724,7 @@ private fun HomeFilterDialog(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Apply Filters")
+                    Text("Apply Filters${if (activeFilterCount > 0) " ($activeFilterCount)" else ""}")
                 }
             }
         }
@@ -664,27 +732,102 @@ private fun HomeFilterDialog(
 }
 
 @Composable
-private fun DropdownFilterField(
+private fun MultiSelectChipField(
     label: String,
     options: List<String>,
-    selectedValue: String,
-    onValueSelected: (String) -> Unit
+    selectedValues: List<String>,
+    onValuesChanged: (List<String>) -> Unit
 ) {
-    var expanded by rememberSaveable(label) { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold)
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(selectedValue)
-        }
-        androidx.compose.material3.DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        ChipFlowRow(horizontalGap = 8.dp, verticalGap = 8.dp) {
             options.forEach { option ->
-                androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onValueSelected(option)
-                        expanded = false
-                    }
-                )
+                val isSelected = option in selectedValues
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = if (isSelected) PrimaryStart else Color.White,
+                            shape = RoundedCornerShape(999.dp)
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = if (isSelected) PrimaryStart else BorderColor,
+                            shape = RoundedCornerShape(999.dp)
+                        )
+                        .clickable {
+                            val next = if (isSelected) {
+                                selectedValues - option
+                            } else {
+                                selectedValues + option
+                            }
+                            onValuesChanged(next)
+                        }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = option,
+                        color = if (isSelected) Color.White else TextPrimary,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChipFlowRow(
+    modifier: Modifier = Modifier,
+    horizontalGap: androidx.compose.ui.unit.Dp = 8.dp,
+    verticalGap: androidx.compose.ui.unit.Dp = 8.dp,
+    content: @Composable () -> Unit
+) {
+    SubcomposeLayout(modifier = modifier) { constraints ->
+        val hGapPx = horizontalGap.roundToPx()
+        val vGapPx = verticalGap.roundToPx()
+
+        val placeables = subcompose(0, content).map { it.measure(constraints.copy(minWidth = 0)) }
+
+        val rows = mutableListOf<List<androidx.compose.ui.layout.Placeable>>()
+        var currentRow = mutableListOf<androidx.compose.ui.layout.Placeable>()
+        var currentRowWidth = 0
+
+        placeables.forEach { placeable ->
+            if (currentRow.isEmpty()) {
+                currentRow.add(placeable)
+                currentRowWidth = placeable.width
+            } else if (currentRowWidth + hGapPx + placeable.width <= constraints.maxWidth) {
+                currentRow.add(placeable)
+                currentRowWidth += hGapPx + placeable.width
+            } else {
+                rows.add(currentRow.toList())
+                currentRow = mutableListOf(placeable)
+                currentRowWidth = placeable.width
+            }
+        }
+        if (currentRow.isNotEmpty()) {
+            rows.add(currentRow.toList())
+        }
+
+        val height = rows.sumOf { row -> row.maxOfOrNull { it.height } ?: 0 } +
+            (rows.size - 1).coerceAtLeast(0) * vGapPx
+
+        layout(constraints.maxWidth, height) {
+            var y = 0
+            rows.forEach { row ->
+                val rowHeight = row.maxOfOrNull { it.height } ?: 0
+                var x = 0
+                row.forEach { placeable ->
+                    placeable.placeRelative(x, y + (rowHeight - placeable.height) / 2)
+                    x += placeable.width + hGapPx
+                }
+                y += rowHeight + vGapPx
             }
         }
     }
@@ -708,19 +851,37 @@ private fun RangeFilterField(
         values = start..end
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold)
-        Text(
-            "${formatter.format(values.start.toInt())}$suffix - ${formatter.format(values.endInclusive.toInt())}$suffix",
-            color = PrimaryStart
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            Text(
+                text = "${formatter.format(values.start.toInt())}$suffix - ${formatter.format(values.endInclusive.toInt())}$suffix",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = PrimaryStart
+            )
+        }
         RangeSlider(
             value = values,
             onValueChange = {
                 values = snapRange(it, step, min, max)
                 onRangeChange(values.start, values.endInclusive)
             },
-            valueRange = min..max
+            valueRange = min..max,
+            colors = androidx.compose.material3.SliderDefaults.colors(
+                thumbColor = PrimaryStart,
+                activeTrackColor = PrimaryStart,
+                inactiveTrackColor = BorderColor
+            )
         )
     }
 }
@@ -740,37 +901,37 @@ private fun getFilterDefinitions(selectedPropertyType: String, priceRange: HomeP
     val plotAreaRange = HomePriceRange(0f, 100_000f, 500f)
     return when (selectedPropertyType) {
         HOME_PROPERTY_TYPE_RESIDENTIAL -> listOf(
-            FilterDefinition("residentialType", "Residential Type", FilterControlType.OPTIONS, listOf("Any", "Flat", "Individual House", "Villa", "Bungalow", "Farmhouse", "Apartment", "PG/Hostel")),
-            FilterDefinition("bhkType", "BHK Type", FilterControlType.OPTIONS, listOf("Any", "1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "4+ BHK")),
-            FilterDefinition("possessionStatus", "Property Status", FilterControlType.OPTIONS, listOf("Any", "Ready Possession", "Under Construction")),
-            FilterDefinition("hasParking", "Parking", FilterControlType.OPTIONS, listOf("Any", "Yes", "No")),
+            FilterDefinition("residentialType", "Residential Type", FilterControlType.OPTIONS, listOf("Flat", "Individual House", "Villa", "Bungalow", "Farmhouse", "Apartment", "PG/Hostel")),
+            FilterDefinition("bhkType", "BHK Type", FilterControlType.OPTIONS, listOf("1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "4+ BHK")),
+            FilterDefinition("possessionStatus", "Property Status", FilterControlType.OPTIONS, listOf("Ready Possession", "Under Construction")),
+            FilterDefinition("hasParking", "Parking", FilterControlType.OPTIONS, listOf("Yes", "No")),
             FilterDefinition("price", "Price Range", FilterControlType.RANGE, range = priceRange),
             FilterDefinition("builtUpArea", "Built-up Area Range", FilterControlType.RANGE_PAIR, minKey = "builtUpAreaMin", maxKey = "builtUpAreaMax", range = builtUpRange),
-            FilterDefinition("furnishing", "Furnishing", FilterControlType.OPTIONS, listOf("Any", "Fully Furnished", "Semi-Furnished", "Unfurnished")),
-            FilterDefinition("facing", "Facing", FilterControlType.OPTIONS, listOf("Any", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"))
+            FilterDefinition("furnishing", "Furnishing", FilterControlType.OPTIONS, listOf("Fully Furnished", "Semi-Furnished", "Unfurnished")),
+            FilterDefinition("facing", "Facing", FilterControlType.OPTIONS, listOf("North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"))
         )
         HOME_PROPERTY_TYPE_COMMERCIAL -> listOf(
             FilterDefinition("price", "Price Range", FilterControlType.RANGE, range = priceRange),
-            FilterDefinition("commercialType", "Commercial Type", FilterControlType.OPTIONS, listOf("Any", "Office Space", "Retail Shop", "Showroom", "Restaurant", "Cafe", "Other")),
+            FilterDefinition("commercialType", "Commercial Type", FilterControlType.OPTIONS, listOf("Office Space", "Retail Shop", "Showroom", "Restaurant", "Cafe", "Other")),
             FilterDefinition("builtUpArea", "Built-up Area Range", FilterControlType.RANGE_PAIR, minKey = "builtUpAreaMin", maxKey = "builtUpAreaMax", range = builtUpRange),
-            FilterDefinition("possessionStatus", "Possession Status", FilterControlType.OPTIONS, listOf("Any", "Ready to Move", "Under Construction")),
-            FilterDefinition("parkingType", "Parking Type", FilterControlType.OPTIONS, listOf("Any", "Private", "Public")),
-            FilterDefinition("washroomType", "Washroom Type", FilterControlType.OPTIONS, listOf("Any", "Private", "Public"))
+            FilterDefinition("possessionStatus", "Possession Status", FilterControlType.OPTIONS, listOf("Ready to Move", "Under Construction")),
+            FilterDefinition("parkingType", "Parking Type", FilterControlType.OPTIONS, listOf("Private", "Public")),
+            FilterDefinition("washroomType", "Washroom Type", FilterControlType.OPTIONS, listOf("Private", "Public"))
         )
         HOME_PROPERTY_TYPE_INDUSTRIAL -> listOf(
             FilterDefinition("price", "Price Range", FilterControlType.RANGE, range = priceRange),
-            FilterDefinition("industrialType", "Industrial Type", FilterControlType.OPTIONS, listOf("Any", "Warehouse", "Plot", "Industrial Shed")),
+            FilterDefinition("industrialType", "Industrial Type", FilterControlType.OPTIONS, listOf("Warehouse", "Plot", "Industrial Shed")),
             FilterDefinition("plotArea", "Plot Area Range", FilterControlType.RANGE_PAIR, minKey = "plotAreaMin", maxKey = "plotAreaMax", range = plotAreaRange),
             FilterDefinition("builtUpArea", "Built-up Area Range", FilterControlType.RANGE_PAIR, minKey = "builtUpAreaMin", maxKey = "builtUpAreaMax", range = builtUpRange),
-            FilterDefinition("electricityLoad", "Min Electricity Load", FilterControlType.OPTIONS, listOf("Any", "Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW"))
+            FilterDefinition("electricityLoad", "Min Electricity Load", FilterControlType.OPTIONS, listOf("Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW"))
         )
         else -> listOf(
             FilterDefinition("price", "Price Range", FilterControlType.RANGE, range = priceRange),
-            FilterDefinition("landType", "Land Type", FilterControlType.OPTIONS, listOf("Any", "Residential Plot", "Commercial Plot", "Industrial Plot", "Agricultural Land", "Farm Land", "NA Plot")),
+            FilterDefinition("landType", "Land Type", FilterControlType.OPTIONS, listOf("Residential Plot", "Commercial Plot", "Industrial Plot", "Agricultural Land", "Farm Land", "NA Plot")),
             FilterDefinition("propertyArea", "Area Range", FilterControlType.RANGE_PAIR, minKey = "propertyAreaMin", maxKey = "propertyAreaMax", range = plotAreaRange),
-            FilterDefinition("landStatus", "Land Status", FilterControlType.OPTIONS, listOf("Any", "Clear Title", "Litigation", "Under Development", "Ready for Construction")),
-            FilterDefinition("roadWidth", "Min Road Width", FilterControlType.OPTIONS, listOf("Any", "Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft")),
-            FilterDefinition("landFacing", "Facing", FilterControlType.OPTIONS, listOf("Any", "North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"))
+            FilterDefinition("landStatus", "Land Status", FilterControlType.OPTIONS, listOf("Clear Title", "Litigation", "Under Development", "Ready for Construction")),
+            FilterDefinition("roadWidth", "Min Road Width", FilterControlType.OPTIONS, listOf("Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft")),
+            FilterDefinition("landFacing", "Facing", FilterControlType.OPTIONS, listOf("North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"))
         )
     }
 }
