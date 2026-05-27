@@ -463,6 +463,40 @@ class PropertyRepositoryImpl(
         return propertyIndex >= filterIndex
     }
 
+    private fun filterValues(filterValue: Any?): List<String>? {
+        return when (filterValue) {
+            is List<*> -> filterValue.mapNotNull { it as? String }.filter { it.isNotBlank() }
+            is String -> if (filterValue.isNotBlank() && filterValue != "Any") listOf(filterValue) else null
+            else -> null
+        }
+    }
+
+    private fun matchesBhk(propertyBhk: String, filterValues: List<String>): Boolean {
+        return filterValues.any { filterValue ->
+            if (filterValue == "4+ BHK") {
+                val numeric = Regex("(\\d+\\.?\\d*)").find(propertyBhk)?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: 0.0
+                numeric >= 4.0
+            } else {
+                propertyBhk == filterValue
+            }
+        }
+    }
+
+    private fun matchesParking(property: Map<String, Any?>, filterValues: List<String>): Boolean {
+        val hasCoveredParking = str(property, FirebaseConstants.FIELD_COVERED_PARKING).isNotBlank() &&
+            str(property, FirebaseConstants.FIELD_COVERED_PARKING) != "No"
+        val hasOpenParking = str(property, FirebaseConstants.FIELD_OPEN_PARKING).isNotBlank() &&
+            str(property, FirebaseConstants.FIELD_OPEN_PARKING) != "No"
+        val hasAnyParking = hasCoveredParking || hasOpenParking
+        return filterValues.any { filterValue ->
+            when (filterValue) {
+                "Yes" -> hasAnyParking
+                "No" -> !hasAnyParking
+                else -> false
+            }
+        }
+    }
+
     private fun matchesProperty(
         property: Map<String, Any?>,
         filters: Map<String, Any>,
@@ -482,101 +516,84 @@ class PropertyRepositoryImpl(
 
         when (propertyType) {
             "residential" -> {
-                val residentialType = filters["residentialType"] as? String
-                if (!residentialType.isNullOrBlank() &&
-                    residentialType != "Any" &&
-                    str(property, FirebaseConstants.FIELD_RESIDENTIAL_TYPE) != residentialType
-                ) return false
-
-                val bhkType = filters["bhkType"] as? String
-                if (!bhkType.isNullOrBlank() && bhkType != "Any") {
-                    val bhkConfig = str(property, FirebaseConstants.FIELD_BHK_CONFIG)
-                    if (bhkType == "4+ BHK") {
-                        val numeric = Regex("(\\d+\\.?\\d*)").find(bhkConfig)?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: 0.0
-                        if (numeric < 4.0) return false
-                    } else if (bhkConfig != bhkType) {
-                        return false
-                    }
+                filterValues(filters["residentialType"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_RESIDENTIAL_TYPE) !in values) return false
                 }
 
-                val possessionStatus = filters["possessionStatus"] as? String
-                if (!possessionStatus.isNullOrBlank() &&
-                    possessionStatus != "Any" &&
-                    normalizePossessionStatus(str(property, FirebaseConstants.FIELD_POSSESSION_STATUS)) != normalizePossessionStatus(possessionStatus)
-                ) return false
+                filterValues(filters["bhkType"])?.let { values ->
+                    if (!matchesBhk(str(property, FirebaseConstants.FIELD_BHK_CONFIG), values)) return false
+                }
 
-                val hasParking = filters["hasParking"] as? String
-                if (!hasParking.isNullOrBlank() && hasParking != "Any") {
-                    val hasCoveredParking = str(property, FirebaseConstants.FIELD_COVERED_PARKING).isNotBlank() &&
-                        str(property, FirebaseConstants.FIELD_COVERED_PARKING) != "No"
-                    val hasOpenParking = str(property, FirebaseConstants.FIELD_OPEN_PARKING).isNotBlank() &&
-                        str(property, FirebaseConstants.FIELD_OPEN_PARKING) != "No"
-                    val hasAnyParking = hasCoveredParking || hasOpenParking
-                    if (hasParking == "Yes" && !hasAnyParking) return false
-                    if (hasParking == "No" && hasAnyParking) return false
+                filterValues(filters["possessionStatus"])?.let { values ->
+                    val propStatus = normalizePossessionStatus(str(property, FirebaseConstants.FIELD_POSSESSION_STATUS))
+                    if (values.none { normalizePossessionStatus(it) == propStatus }) return false
+                }
+
+                filterValues(filters["hasParking"])?.let { values ->
+                    if (!matchesParking(property, values)) return false
                 }
 
                 if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_BUILT_UP_AREA, filters["builtUpAreaMin"], filters["builtUpAreaMax"])) return false
 
-                val furnishing = filters["furnishing"] as? String
-                if (!furnishing.isNullOrBlank() && furnishing != "Any" && str(property, FirebaseConstants.FIELD_FURNISHING) != furnishing) return false
+                filterValues(filters["furnishing"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_FURNISHING) !in values) return false
+                }
 
-                val facing = filters["facing"] as? String
-                if (!facing.isNullOrBlank() && facing != "Any" && str(property, FirebaseConstants.FIELD_FACING) != facing) return false
+                filterValues(filters["facing"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_FACING) !in values) return false
+                }
             }
             "commercial" -> {
-                val commercialType = filters["commercialType"] as? String
-                if (!commercialType.isNullOrBlank() && commercialType != "Any" && str(property, FirebaseConstants.FIELD_COMMERCIAL_TYPE) != commercialType) return false
+                filterValues(filters["commercialType"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_COMMERCIAL_TYPE) !in values) return false
+                }
                 if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_BUILT_UP_AREA, filters["builtUpAreaMin"], filters["builtUpAreaMax"])) return false
 
-                val possessionStatus = filters["possessionStatus"] as? String
-                if (!possessionStatus.isNullOrBlank() &&
-                    possessionStatus != "Any" &&
-                    normalizePossessionStatus(str(property, FirebaseConstants.FIELD_POSSESSION_STATUS)) != normalizePossessionStatus(possessionStatus)
-                ) return false
+                filterValues(filters["possessionStatus"])?.let { values ->
+                    val propStatus = normalizePossessionStatus(str(property, FirebaseConstants.FIELD_POSSESSION_STATUS))
+                    if (values.none { normalizePossessionStatus(it) == propStatus }) return false
+                }
 
-                val parkingType = filters["parkingType"] as? String
-                if (!parkingType.isNullOrBlank() && parkingType != "Any" && str(property, FirebaseConstants.FIELD_PARKING_TYPE) != parkingType) return false
+                filterValues(filters["parkingType"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_PARKING_TYPE) !in values) return false
+                }
 
-                val washroomType = filters["washroomType"] as? String
-                if (!washroomType.isNullOrBlank() && washroomType != "Any" && str(property, FirebaseConstants.FIELD_WASHROOM_TYPE) != washroomType) return false
+                filterValues(filters["washroomType"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_WASHROOM_TYPE) !in values) return false
+                }
             }
             "industrial" -> {
-                val industrialType = filters["industrialType"] as? String
-                if (!industrialType.isNullOrBlank() && industrialType != "Any" && str(property, FirebaseConstants.FIELD_INDUSTRIAL_TYPE) != industrialType) return false
+                filterValues(filters["industrialType"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_INDUSTRIAL_TYPE) !in values) return false
+                }
                 if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_PLOT_AREA, filters["plotAreaMin"], filters["plotAreaMax"])) return false
                 if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_BUILT_UP_AREA, filters["builtUpAreaMin"], filters["builtUpAreaMax"])) return false
 
-                val electricityLoad = filters["electricityLoad"] as? String
-                if (!electricityLoad.isNullOrBlank() &&
-                    electricityLoad != "Any" &&
-                    !orderedIndexMatch(
-                        listOf("Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW"),
-                        str(property, FirebaseConstants.FIELD_ELECTRICITY_LOAD),
-                        electricityLoad
-                    )
-                ) return false
+                filterValues(filters["electricityLoad"])?.let { values ->
+                    val propValue = str(property, FirebaseConstants.FIELD_ELECTRICITY_LOAD)
+                    val valueOrder = listOf("Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW")
+                    if (values.none { orderedIndexMatch(valueOrder, propValue, it) }) return false
+                }
             }
             "land" -> {
-                val landType = filters["landType"] as? String
-                if (!landType.isNullOrBlank() && landType != "Any" && str(property, FirebaseConstants.FIELD_LAND_TYPE) != landType) return false
+                filterValues(filters["landType"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_LAND_TYPE) !in values) return false
+                }
                 if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_PROPERTY_AREA, filters["propertyAreaMin"], filters["propertyAreaMax"])) return false
 
-                val landStatus = filters["landStatus"] as? String
-                if (!landStatus.isNullOrBlank() && landStatus != "Any" && str(property, FirebaseConstants.FIELD_LAND_STATUS) != landStatus) return false
+                filterValues(filters["landStatus"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_LAND_STATUS) !in values) return false
+                }
 
-                val roadWidth = filters["roadWidth"] as? String
-                if (!roadWidth.isNullOrBlank() &&
-                    roadWidth != "Any" &&
-                    !orderedIndexMatch(
-                        listOf("Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft"),
-                        str(property, FirebaseConstants.FIELD_ROAD_WIDTH),
-                        roadWidth
-                    )
-                ) return false
+                filterValues(filters["roadWidth"])?.let { values ->
+                    val propValue = str(property, FirebaseConstants.FIELD_ROAD_WIDTH)
+                    val valueOrder = listOf("Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft")
+                    if (values.none { orderedIndexMatch(valueOrder, propValue, it) }) return false
+                }
 
-                val landFacing = filters["landFacing"] as? String
-                if (!landFacing.isNullOrBlank() && landFacing != "Any" && str(property, FirebaseConstants.FIELD_LAND_FACING) != landFacing) return false
+                filterValues(filters["landFacing"])?.let { values ->
+                    if (str(property, FirebaseConstants.FIELD_LAND_FACING) !in values) return false
+                }
             }
         }
 
