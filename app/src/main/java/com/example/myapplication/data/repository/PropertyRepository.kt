@@ -3,17 +3,27 @@ package com.example.myapplication.data.repository
 import android.util.Log
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.utils.FirebaseConstants
+import com.example.myapplication.utils.getGeohashQueries
+import com.example.myapplication.utils.haversineDistanceKm
+import com.example.myapplication.utils.normalizeCoordinate
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 
 interface PropertyRepository {
     suspend fun fetchPropertiesPage(
         limitCount: Int,
         cursor: DocumentSnapshot?,
-        viewerRole: String
+        viewerRole: String,
+        propertyType: String = "all",
+        listingType: String? = null,
+        geoFilter: GeoFilter? = null,
+        filters: Map<String, Any> = emptyMap(),
+        locationRestriction: LocationRestriction? = null
     ): PropertyPageResult
 
     suspend fun fetchUserPropertiesPage(
@@ -50,6 +60,25 @@ data class PropertyPageResult(
     val hasMore: Boolean
 )
 
+data class SearchArea(
+    val placeId: String? = null,
+    val displayName: String = "",
+    val formattedAddress: String = "",
+    val lat: Double? = null,
+    val lng: Double? = null
+)
+
+data class GeoFilter(
+    val centers: List<SearchArea> = emptyList(),
+    val radiusKm: Double? = null
+)
+
+data class LocationRestriction(
+    val stateCode: String = "",
+    val stateName: String = "",
+    val districtName: String = ""
+)
+
 class PropertyRepositoryImpl(
     private val firestore: FirebaseFirestore,
     private val interestedRepository: InterestedRepository
@@ -62,51 +91,92 @@ class PropertyRepositoryImpl(
     override suspend fun fetchPropertiesPage(
         limitCount: Int,
         cursor: DocumentSnapshot?,
-        viewerRole: String
+        viewerRole: String,
+        propertyType: String,
+        listingType: String?,
+        geoFilter: GeoFilter?,
+        filters: Map<String, Any>,
+        locationRestriction: LocationRestriction?
     ): PropertyPageResult {
-        // Step 1: Query active properties (matches web's loadAllProperties)
-        val snapshot = firestore
-            .collection(FirebaseConstants.COLLECTION_PROPERTIES)
-            .whereEqualTo(FirebaseConstants.FIELD_IS_ACTIVE, true)
-            .get()
-            .await()
+        val baseCollection = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES)
+        val allDocs = mutableListOf<DocumentSnapshot>()
+        val isGeoQuery = !geoFilter?.centers.isNullOrEmpty() && (geoFilter?.radiusKm ?: 0.0) > 0.0
 
-        val allDocs = snapshot.documents
-
-        // Step 2: Map ALL docs and filter by role (BEFORE paginating — matches web behavior)
-        val visibleDocs = allDocs.mapNotNull { doc ->
-            mapToProperty(doc)
-        }.filter { property ->
-            canAccessDeveloperOwnedContent(property.ownerRole, viewerRole)
+        fun buildBaseQuery(): Query {
+            var query: Query = baseCollection.whereEqualTo(FirebaseConstants.FIELD_IS_ACTIVE, true)
+            if (propertyType.isNotBlank() && propertyType != "all") {
+                query = query.whereEqualTo(FirebaseConstants.FIELD_PROPERTY_TYPE, propertyType)
+            }
+            if (!listingType.isNullOrBlank()) {
+                query = query.whereEqualTo(FirebaseConstants.FIELD_LISTING_TYPE, listingType)
+            }
+            return query
         }
 
-        // Step 3: Sort by createdAt desc client-side (newest first)
-        val sortedVisible = visibleDocs.sortedByDescending { it.createdAt?.seconds ?: 0L }
+        if (isGeoQuery) {
+            val uniqueRanges = geoFilter!!.centers
+                .flatMap { center -> getGeohashQueries(center.lat, center.lng, geoFilter.radiusKm) }
+                .distinctBy { "${it.start}:${it.end}" }
 
-        // Step 4: Paginate the filtered+sorted list
-        val startIndex = if (cursor != null) {
-            val cursorIndex = sortedVisible.indexOfFirst { it.id == cursor.id }
-            if (cursorIndex >= 0) cursorIndex + 1 else 0
-        } else 0
+            uniqueRanges.forEach { range ->
+                val snapshot = buildBaseQuery()
+                    .whereGreaterThanOrEqualTo(FirebaseConstants.FIELD_GEOHASH, range.start)
+                    .whereLessThanOrEqualTo(FirebaseConstants.FIELD_GEOHASH, range.end)
+                    .orderBy(FirebaseConstants.FIELD_GEOHASH)
+                    .orderBy(FirebaseConstants.FIELD_CREATED_AT, Query.Direction.DESCENDING)
+                    .limit((limitCount * 10).toLong())
+                    .get()
+                    .await()
 
-        val endIndex = minOf(startIndex + limitCount, sortedVisible.size)
-        val pageItems = sortedVisible.subList(startIndex, endIndex)
+                snapshot.documents.forEach { doc ->
+                    if (allDocs.none { it.id == doc.id }) {
+                        allDocs += doc
+                    }
+                }
+            }
+            allDocs.retainAll { doc -> matchesGeoFilter(doc.data.orEmpty(), geoFilter) }
+            allDocs.sortByDescending { (it.getTimestamp(FirebaseConstants.FIELD_CREATED_AT)?.seconds ?: 0L) }
+        } else {
+            var query = buildBaseQuery()
+                .orderBy(FirebaseConstants.FIELD_CREATED_AT, Query.Direction.DESCENDING)
+                .limit((limitCount * 10 + 1).toLong())
+            if (cursor != null) {
+                query = query.startAfter(cursor)
+            }
+            val snapshot = query.get().await()
+            allDocs += snapshot.documents
+        }
 
-        val hasMore = endIndex < sortedVisible.size
+        val filteredDocs = allDocs.filter { doc ->
+            val data = doc.data.orEmpty()
+            isPropertyPublished(data) &&
+                canAccessDeveloperOwnedContent(data[FirebaseConstants.FIELD_OWNER_ROLE] as? String ?: "", viewerRole) &&
+                matchesProperty(data, filters, propertyType, locationRestriction)
+        }
 
-        // We can't use Property as cursor since it's not a DocumentSnapshot.
-        // For client-side pagination, use the last visible item's ID for simple offset.
-        val nextCursor = if (hasMore && pageItems.isNotEmpty()) {
-            allDocs.find { it.id == pageItems.last().id }
-        } else null
+        val paginatedDocs = if (isGeoQuery && cursor != null) {
+            val cursorIndex = filteredDocs.indexOfFirst { it.id == cursor.id }
+            if (cursorIndex >= 0) filteredDocs.drop(cursorIndex + 1) else emptyList()
+        } else {
+            filteredDocs
+        }
+        val hasMore = paginatedDocs.size > limitCount
+        val pageDocs = paginatedDocs.take(limitCount)
+        val nextCursor = if (hasMore && pageDocs.isNotEmpty()) {
+            allDocs.find { it.id == pageDocs.last().id }
+        } else {
+            null
+        }
 
         Log.d(
             TAG,
-            "pageResult: pageItems=${pageItems.size} hasMore=$hasMore nextCursor=${nextCursor?.id}"
+            "homeFetch propertyType=$propertyType listingType=$listingType viewerRole=$viewerRole " +
+                "geo=$isGeoQuery raw=${allDocs.size} filtered=${filteredDocs.size} page=${pageDocs.size} " +
+                "hasMore=$hasMore filters=${filters.keys} locationRestriction=$locationRestriction"
         )
 
         return PropertyPageResult(
-            items = pageItems,
+            items = pageDocs.mapNotNull(::mapToProperty),
             nextCursor = nextCursor,
             hasMore = hasMore
         )
@@ -272,9 +342,275 @@ class PropertyRepositoryImpl(
     private fun str(data: Map<String, Any?>, key: String): String =
         data[key] as? String ?: ""
 
+    private fun isPropertyPublished(data: Map<String, Any?>): Boolean {
+        return (data[FirebaseConstants.FIELD_STATUS] as? String ?: "") !=
+            FirebaseConstants.PROPERTY_STATUS_DRAFT
+    }
+
+    private fun normalizeText(value: Any?): String {
+        return value?.toString()?.trim()?.lowercase(Locale.US).orEmpty()
+    }
+
+    private fun normalizeCompactText(value: Any?): String {
+        return normalizeText(value).replace(Regex("\\s+"), " ")
+    }
+
+    private fun propertyLocationText(property: Map<String, Any?>): String {
+        val geo = property[FirebaseConstants.FIELD_GEO] as? Map<*, *>
+        return normalizeCompactText(
+            listOf(
+                property[FirebaseConstants.FIELD_STATE_CODE],
+                property[FirebaseConstants.FIELD_STATE],
+                property[FirebaseConstants.FIELD_CITY],
+                property[FirebaseConstants.FIELD_CITY_STATE],
+                property[FirebaseConstants.FIELD_DISTRICT],
+                property[FirebaseConstants.FIELD_NAME_STREET_AREA],
+                property[FirebaseConstants.FIELD_LANDMARK],
+                property[FirebaseConstants.FIELD_ADDRESS],
+                property[FirebaseConstants.FIELD_LOCATION],
+                property[FirebaseConstants.FIELD_LOCATION_DETAILS],
+                geo?.get("formattedAddress"),
+                geo?.get("displayName")
+            ).filterNotNull().joinToString(", ")
+        )
+    }
+
+    private fun exactOrContainedLocationMatch(candidateValues: List<Any?>, expectedValue: String): Boolean {
+        val expected = normalizeCompactText(expectedValue)
+        if (expected.isBlank()) return true
+        return candidateValues.any { candidate ->
+            val normalizedCandidate = normalizeCompactText(candidate)
+            normalizedCandidate == expected || normalizedCandidate.contains(expected)
+        }
+    }
+
+    private fun matchesLocationRestriction(
+        property: Map<String, Any?>,
+        locationRestriction: LocationRestriction?
+    ): Boolean {
+        if (locationRestriction == null) return true
+
+        val geo = property[FirebaseConstants.FIELD_GEO] as? Map<*, *>
+        val combinedLocationText = propertyLocationText(property)
+        var hasMatchingStateCode = false
+
+        if (locationRestriction.stateCode.isNotBlank()) {
+            val propertyStateCode = normalizeText(property[FirebaseConstants.FIELD_STATE_CODE])
+            if (propertyStateCode.isNotBlank() &&
+                propertyStateCode != normalizeText(locationRestriction.stateCode)
+            ) {
+                return false
+            }
+            hasMatchingStateCode = propertyStateCode.isNotBlank()
+        }
+
+        if (!hasMatchingStateCode && locationRestriction.stateName.isNotBlank() &&
+            !exactOrContainedLocationMatch(
+                listOf(
+                    property[FirebaseConstants.FIELD_STATE],
+                    property[FirebaseConstants.FIELD_CITY_STATE],
+                    geo?.get("formattedAddress"),
+                    property[FirebaseConstants.FIELD_ADDRESS],
+                    property[FirebaseConstants.FIELD_LOCATION_DETAILS],
+                    combinedLocationText
+                ),
+                locationRestriction.stateName
+            )
+        ) {
+            return false
+        }
+
+        if (locationRestriction.districtName.isNotBlank() &&
+            !exactOrContainedLocationMatch(
+                listOf(
+                    property[FirebaseConstants.FIELD_CITY],
+                    property[FirebaseConstants.FIELD_CITY_STATE],
+                    property[FirebaseConstants.FIELD_DISTRICT],
+                    geo?.get("formattedAddress"),
+                    property[FirebaseConstants.FIELD_ADDRESS],
+                    property[FirebaseConstants.FIELD_LOCATION_DETAILS],
+                    combinedLocationText
+                ),
+                locationRestriction.districtName
+            )
+        ) {
+            return false
+        }
+
+        return true
+    }
+
+    private fun matchesGeoFilter(property: Map<String, Any?>, geoFilter: GeoFilter?): Boolean {
+        if (geoFilter?.radiusKm == null || geoFilter.radiusKm <= 0.0) return true
+        val geo = property[FirebaseConstants.FIELD_GEO] as? Map<*, *>
+        val propLat = normalizeCoordinate(geo?.get("lat"))
+        val propLng = normalizeCoordinate(geo?.get("lng"))
+        if (propLat == null || propLng == null) return false
+
+        val centers = geoFilter.centers.filter { it.lat != null && it.lng != null }
+        if (centers.isEmpty()) return true
+
+        return centers.any { center ->
+            val centerLat = center.lat ?: return@any false
+            val centerLng = center.lng ?: return@any false
+            haversineDistanceKm(centerLat, centerLng, propLat, propLng) <= geoFilter.radiusKm
+        }
+    }
+
+    private fun orderedIndexMatch(valueOrder: List<String>, propertyValue: String, filterValue: String): Boolean {
+        val filterIndex = valueOrder.indexOf(filterValue)
+        val propertyIndex = valueOrder.indexOf(propertyValue)
+        return propertyIndex >= filterIndex
+    }
+
+    private fun matchesProperty(
+        property: Map<String, Any?>,
+        filters: Map<String, Any>,
+        propertyType: String,
+        locationRestriction: LocationRestriction?
+    ): Boolean {
+        if (!matchesLocationRestriction(property, locationRestriction)) return false
+        if (filters.isEmpty()) return true
+
+        val price = (property[FirebaseConstants.FIELD_PRICE] as? Number)?.toDouble()
+        (filters["priceMin"] as? Number)?.toDouble()?.let { minPrice ->
+            if (price == null || price < minPrice) return false
+        }
+        (filters["priceMax"] as? Number)?.toDouble()?.let { maxPrice ->
+            if (price == null || price > maxPrice) return false
+        }
+
+        when (propertyType) {
+            "residential" -> {
+                val residentialType = filters["residentialType"] as? String
+                if (!residentialType.isNullOrBlank() &&
+                    residentialType != "Any" &&
+                    str(property, FirebaseConstants.FIELD_RESIDENTIAL_TYPE) != residentialType
+                ) return false
+
+                val bhkType = filters["bhkType"] as? String
+                if (!bhkType.isNullOrBlank() && bhkType != "Any") {
+                    val bhkConfig = str(property, FirebaseConstants.FIELD_BHK_CONFIG)
+                    if (bhkType == "4+ BHK") {
+                        val numeric = Regex("(\\d+\\.?\\d*)").find(bhkConfig)?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: 0.0
+                        if (numeric < 4.0) return false
+                    } else if (bhkConfig != bhkType) {
+                        return false
+                    }
+                }
+
+                val possessionStatus = filters["possessionStatus"] as? String
+                if (!possessionStatus.isNullOrBlank() &&
+                    possessionStatus != "Any" &&
+                    normalizePossessionStatus(str(property, FirebaseConstants.FIELD_POSSESSION_STATUS)) != normalizePossessionStatus(possessionStatus)
+                ) return false
+
+                val hasParking = filters["hasParking"] as? String
+                if (!hasParking.isNullOrBlank() && hasParking != "Any") {
+                    val hasCoveredParking = str(property, FirebaseConstants.FIELD_COVERED_PARKING).isNotBlank() &&
+                        str(property, FirebaseConstants.FIELD_COVERED_PARKING) != "No"
+                    val hasOpenParking = str(property, FirebaseConstants.FIELD_OPEN_PARKING).isNotBlank() &&
+                        str(property, FirebaseConstants.FIELD_OPEN_PARKING) != "No"
+                    val hasAnyParking = hasCoveredParking || hasOpenParking
+                    if (hasParking == "Yes" && !hasAnyParking) return false
+                    if (hasParking == "No" && hasAnyParking) return false
+                }
+
+                if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_BUILT_UP_AREA, filters["builtUpAreaMin"], filters["builtUpAreaMax"])) return false
+
+                val furnishing = filters["furnishing"] as? String
+                if (!furnishing.isNullOrBlank() && furnishing != "Any" && str(property, FirebaseConstants.FIELD_FURNISHING) != furnishing) return false
+
+                val facing = filters["facing"] as? String
+                if (!facing.isNullOrBlank() && facing != "Any" && str(property, FirebaseConstants.FIELD_FACING) != facing) return false
+            }
+            "commercial" -> {
+                val commercialType = filters["commercialType"] as? String
+                if (!commercialType.isNullOrBlank() && commercialType != "Any" && str(property, FirebaseConstants.FIELD_COMMERCIAL_TYPE) != commercialType) return false
+                if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_BUILT_UP_AREA, filters["builtUpAreaMin"], filters["builtUpAreaMax"])) return false
+
+                val possessionStatus = filters["possessionStatus"] as? String
+                if (!possessionStatus.isNullOrBlank() &&
+                    possessionStatus != "Any" &&
+                    normalizePossessionStatus(str(property, FirebaseConstants.FIELD_POSSESSION_STATUS)) != normalizePossessionStatus(possessionStatus)
+                ) return false
+
+                val parkingType = filters["parkingType"] as? String
+                if (!parkingType.isNullOrBlank() && parkingType != "Any" && str(property, FirebaseConstants.FIELD_PARKING_TYPE) != parkingType) return false
+
+                val washroomType = filters["washroomType"] as? String
+                if (!washroomType.isNullOrBlank() && washroomType != "Any" && str(property, FirebaseConstants.FIELD_WASHROOM_TYPE) != washroomType) return false
+            }
+            "industrial" -> {
+                val industrialType = filters["industrialType"] as? String
+                if (!industrialType.isNullOrBlank() && industrialType != "Any" && str(property, FirebaseConstants.FIELD_INDUSTRIAL_TYPE) != industrialType) return false
+                if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_PLOT_AREA, filters["plotAreaMin"], filters["plotAreaMax"])) return false
+                if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_BUILT_UP_AREA, filters["builtUpAreaMin"], filters["builtUpAreaMax"])) return false
+
+                val electricityLoad = filters["electricityLoad"] as? String
+                if (!electricityLoad.isNullOrBlank() &&
+                    electricityLoad != "Any" &&
+                    !orderedIndexMatch(
+                        listOf("Up to 50 KW", "50-100 KW", "100-500 KW", "500+ KW"),
+                        str(property, FirebaseConstants.FIELD_ELECTRICITY_LOAD),
+                        electricityLoad
+                    )
+                ) return false
+            }
+            "land" -> {
+                val landType = filters["landType"] as? String
+                if (!landType.isNullOrBlank() && landType != "Any" && str(property, FirebaseConstants.FIELD_LAND_TYPE) != landType) return false
+                if (!matchesMinMaxStringNumber(property, FirebaseConstants.FIELD_PROPERTY_AREA, filters["propertyAreaMin"], filters["propertyAreaMax"])) return false
+
+                val landStatus = filters["landStatus"] as? String
+                if (!landStatus.isNullOrBlank() && landStatus != "Any" && str(property, FirebaseConstants.FIELD_LAND_STATUS) != landStatus) return false
+
+                val roadWidth = filters["roadWidth"] as? String
+                if (!roadWidth.isNullOrBlank() &&
+                    roadWidth != "Any" &&
+                    !orderedIndexMatch(
+                        listOf("Less than 20 ft", "20-30 ft", "30-40 ft", "40-60 ft", "60+ ft"),
+                        str(property, FirebaseConstants.FIELD_ROAD_WIDTH),
+                        roadWidth
+                    )
+                ) return false
+
+                val landFacing = filters["landFacing"] as? String
+                if (!landFacing.isNullOrBlank() && landFacing != "Any" && str(property, FirebaseConstants.FIELD_LAND_FACING) != landFacing) return false
+            }
+        }
+
+        return true
+    }
+
+    private fun matchesMinMaxStringNumber(
+        property: Map<String, Any?>,
+        field: String,
+        minValue: Any?,
+        maxValue: Any?
+    ): Boolean {
+        val propertyValue = str(property, field).toDoubleOrNull()
+        (minValue as? Number)?.toDouble()?.let { min ->
+            if (propertyValue == null || propertyValue < min) return false
+        }
+        (maxValue as? Number)?.toDouble()?.let { max ->
+            if (propertyValue == null || propertyValue > max) return false
+        }
+        return true
+    }
+
+    private fun normalizePossessionStatus(value: String): String {
+        return when (normalizeText(value)) {
+            "ready to move", "ready possession", "ready_possession" -> "ready_possession"
+            "under construction", "under_construction" -> "under_construction"
+            else -> value
+        }
+    }
+
     private fun mapToProperty(doc: DocumentSnapshot): Property? {
         if (!doc.exists()) return null
         val data = doc.data ?: return null
+        val geo = data[FirebaseConstants.FIELD_GEO] as? Map<*, *>
 
         val images = (data[FirebaseConstants.FIELD_IMAGES] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
         val amenities = (data[FirebaseConstants.FIELD_AMENITIES] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
@@ -294,12 +630,24 @@ class PropertyRepositoryImpl(
             rent = mappedRent,
             location = str(data, FirebaseConstants.FIELD_LOCATION),
             cityState = str(data, FirebaseConstants.FIELD_CITY_STATE),
+            state = str(data, FirebaseConstants.FIELD_STATE),
+            stateCode = str(data, FirebaseConstants.FIELD_STATE_CODE),
+            city = str(data, FirebaseConstants.FIELD_CITY),
+            district = str(data, FirebaseConstants.FIELD_DISTRICT),
+            address = str(data, FirebaseConstants.FIELD_ADDRESS),
+            nameStreetArea = str(data, FirebaseConstants.FIELD_NAME_STREET_AREA),
+            landmark = str(data, FirebaseConstants.FIELD_LANDMARK),
+            locationDetails = str(data, FirebaseConstants.FIELD_LOCATION_DETAILS),
             status = str(data, FirebaseConstants.FIELD_STATUS),
             isActive = data[FirebaseConstants.FIELD_IS_ACTIVE] as? Boolean ?: true,
             ownerRole = str(data, FirebaseConstants.FIELD_OWNER_ROLE),
             uniqueId = str(data, FirebaseConstants.FIELD_UNIQUE_ID),
             createdAt = createdAt,
             updatedAt = updatedAt,
+            geoLat = normalizeCoordinate(geo?.get("lat")),
+            geoLng = normalizeCoordinate(geo?.get("lng")),
+            geoFormattedAddress = geo?.get("formattedAddress") as? String ?: "",
+            geoDisplayName = geo?.get("displayName") as? String ?: "",
 
             // Owner
             owner = str(data, FirebaseConstants.FIELD_OWNER),
@@ -333,6 +681,8 @@ class PropertyRepositoryImpl(
             propertyCondition = str(data, FirebaseConstants.FIELD_PROPERTY_CONDITION),
             ownership = str(data, FirebaseConstants.FIELD_OWNERSHIP),
             plotArea = str(data, FirebaseConstants.FIELD_PLOT_AREA),
+            propertyArea = str(data, FirebaseConstants.FIELD_PROPERTY_AREA),
+            propertyAreaUnit = str(data, FirebaseConstants.FIELD_PROPERTY_AREA_UNIT),
             builtUpArea = str(data, FirebaseConstants.FIELD_BUILT_UP_AREA),
             carpetArea = str(data, FirebaseConstants.FIELD_CARPET_AREA),
             totalConstructionArea = str(data, FirebaseConstants.FIELD_TOTAL_CONSTRUCTION_AREA),
@@ -410,8 +760,19 @@ class PropertyRepositoryImpl(
      * Non-developers cannot see developer-owned content.
      */
     private fun canAccessDeveloperOwnedContent(ownerRole: String, viewerRole: String): Boolean {
-        val isDevOwner = ownerRole == FirebaseConstants.ROLE_DEVELOPER
-        val isDevViewer = viewerRole == FirebaseConstants.ROLE_DEVELOPER
+        val isDevOwner = normalizeRole(ownerRole) == FirebaseConstants.ROLE_DEVELOPER
+        val isDevViewer = normalizeRole(viewerRole) == FirebaseConstants.ROLE_DEVELOPER
         return !isDevOwner || isDevViewer
+    }
+
+    private fun normalizeRole(role: String): String {
+        return when (role.trim().lowercase(Locale.US)) {
+            FirebaseConstants.ROLE_USER,
+            FirebaseConstants.ROLE_BROKER,
+            FirebaseConstants.ROLE_ADMIN,
+            FirebaseConstants.ROLE_SUPERADMIN,
+            FirebaseConstants.ROLE_DEVELOPER -> role.trim().lowercase(Locale.US)
+            else -> FirebaseConstants.ROLE_USER
+        }
     }
 }

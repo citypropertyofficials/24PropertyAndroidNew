@@ -12,9 +12,16 @@ data class User(
     val blocked: Boolean = false,
     val maxPropertiesAllowed: Int? = null,
     val preferredLocations: List<String> = emptyList(),
+    val locationPreference: LocationPreference? = null,
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null
 ) {
     val isProfileComplete: Boolean
         get() = name.isNotBlank() && mobile.isNotBlank()
 }
+
+data class LocationPreference(
+    val stateCode: String = "",
+    val stateName: String = "",
+    val districtName: String = ""
+)
