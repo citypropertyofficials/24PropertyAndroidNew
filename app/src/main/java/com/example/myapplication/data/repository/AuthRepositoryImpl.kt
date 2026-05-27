@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.model.LocationPreference
 import com.example.myapplication.data.model.User
 import com.example.myapplication.utils.FirebaseConstants
 import com.google.firebase.auth.FirebaseAuth
@@ -39,9 +40,11 @@ class AuthRepositoryImpl(
             val data = docSnap.data ?: return FirebaseConstants.ROLE_USER
             val role = data[FirebaseConstants.FIELD_ROLE] as? String ?: FirebaseConstants.ROLE_USER
 
-            // Superadmin override
             val email = auth.currentUser?.email
-            if (superAdminEmails.contains(email)) {
+            if (
+                superAdminEmails.contains(email) &&
+                !hasRequiredRole(role, FirebaseConstants.ROLE_SUPERADMIN)
+            ) {
                 return FirebaseConstants.ROLE_SUPERADMIN
             }
             role
@@ -100,12 +103,19 @@ class AuthRepositoryImpl(
 
                 val shouldBeSuperAdmin = superAdminEmails.contains(firebaseUser.email)
                 val currentRole = data[FirebaseConstants.FIELD_ROLE] as? String ?: FirebaseConstants.ROLE_USER
-                val finalRole = if (shouldBeSuperAdmin) FirebaseConstants.ROLE_SUPERADMIN else currentRole
+                val finalRole = if (
+                    shouldBeSuperAdmin &&
+                    !hasRequiredRole(currentRole, FirebaseConstants.ROLE_SUPERADMIN)
+                ) {
+                    FirebaseConstants.ROLE_SUPERADMIN
+                } else {
+                    currentRole
+                }
 
-                if (shouldBeSuperAdmin && currentRole != FirebaseConstants.ROLE_SUPERADMIN) {
+                if (finalRole != currentRole) {
                     userDocRef.update(
                         mapOf(
-                            FirebaseConstants.FIELD_ROLE to FirebaseConstants.ROLE_SUPERADMIN
+                            FirebaseConstants.FIELD_ROLE to finalRole
                         )
                     ).await()
                     // Remove maxPropertiesAllowed for unlimited roles
@@ -162,6 +172,14 @@ class AuthRepositoryImpl(
             syncUserPropertyLimit(userId, role)
 
             val locations = (data[FirebaseConstants.FIELD_PREFERRED_LOCATIONS] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            val locationPreferenceData = data[FirebaseConstants.FIELD_LOCATION_PREFERENCE] as? Map<*, *>
+            val locationPreference = locationPreferenceData?.let {
+                LocationPreference(
+                    stateCode = it["stateCode"] as? String ?: "",
+                    stateName = it["stateName"] as? String ?: "",
+                    districtName = it["districtName"] as? String ?: ""
+                )
+            }
 
             val user = User(
                 uid = userId,
@@ -171,11 +189,27 @@ class AuthRepositoryImpl(
                 mobile = data[FirebaseConstants.FIELD_MOBILE] as? String ?: "",
                 role = role,
                 maxPropertiesAllowed = (data[FirebaseConstants.FIELD_MAX_PROPERTIES_ALLOWED] as? Long)?.toInt() ?: expectedLimit,
-                preferredLocations = locations
+                preferredLocations = locations,
+                locationPreference = locationPreference
             )
             AuthResult.Success(user)
         } catch (e: Exception) {
             AuthResult.Error("Failed to fetch user data: ${e.localizedMessage ?: "Unknown error"}")
+        }
+    }
+
+    private fun hasRequiredRole(userRole: String?, requiredRole: String): Boolean {
+        return roleLevel(userRole) >= roleLevel(requiredRole)
+    }
+
+    private fun roleLevel(role: String?): Int {
+        return when (role?.trim()?.lowercase()) {
+            FirebaseConstants.ROLE_USER -> 0
+            FirebaseConstants.ROLE_BROKER -> 1
+            FirebaseConstants.ROLE_ADMIN -> 2
+            FirebaseConstants.ROLE_SUPERADMIN -> 3
+            FirebaseConstants.ROLE_DEVELOPER -> 4
+            else -> 0
         }
     }
 
