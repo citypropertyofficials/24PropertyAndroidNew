@@ -180,8 +180,10 @@ class FavoritesRepositoryImpl(
             isActive = data[FirebaseConstants.FIELD_IS_ACTIVE] as? Boolean ?: true,
             ownerRole = data[FirebaseConstants.FIELD_OWNER_ROLE] as? String ?: "",
             uniqueId = data[FirebaseConstants.FIELD_UNIQUE_ID] as? String ?: "",
+            owner = data[FirebaseConstants.FIELD_OWNER] as? String ?: "",
             createdAt = createdAt,
-            updatedAt = updatedAt
+            updatedAt = updatedAt,
+            interestedCount = (data[FirebaseConstants.FIELD_INTERESTED_COUNT] as? Number)?.toInt() ?: 0
         )
     }
 

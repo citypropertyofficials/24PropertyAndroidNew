@@ -123,6 +123,9 @@ data class Property(
     val dampUpsIncluded: String = "",
     val electricityIncluded: String = "",
     val waterChargesIncluded: String = "",
+
+    // ── Interested Feature ───────────────────────────────────────
+    val interestedCount: Int = 0,
 ) {
     val displayPrice: String
         get() {

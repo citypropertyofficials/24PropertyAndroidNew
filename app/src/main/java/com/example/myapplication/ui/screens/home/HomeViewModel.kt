@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.InterestedRepository
 import com.example.myapplication.data.repository.PropertyPageResult
 import com.example.myapplication.data.repository.PropertyRepository
 import com.google.firebase.firestore.DocumentSnapshot
@@ -36,7 +37,8 @@ sealed class HomeEvent {
 class HomeViewModel(
     private val authRepository: AuthRepository,
     private val propertyRepository: PropertyRepository,
-    private val favoritesRepository: com.example.myapplication.data.repository.FavoritesRepository
+    private val favoritesRepository: com.example.myapplication.data.repository.FavoritesRepository,
+    private val interestedRepository: InterestedRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -52,8 +54,23 @@ class HomeViewModel(
             initialValue = emptySet()
         )
 
+    // Interested property IDs — real-time listener (same pattern as favoriteIds)
+    val interestedIds: StateFlow<Set<String>> = interestedRepository.observeInterestedPropertyIds()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
+
+    // Per-property loading state for interested toggle
+    private val _interestedLoadingMap = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val interestedLoadingMap: StateFlow<Map<String, Boolean>> = _interestedLoadingMap.asStateFlow()
+
     private var nextCursor: DocumentSnapshot? = null
     private val pageSize = 10
+
+    // Current user ID for ownership check
+    val currentUserId: String? get() = authRepository.getCurrentUserId()
 
     init {
         loadProperties(reset = true)
@@ -161,7 +178,6 @@ class HomeViewModel(
         loadProperties(reset = true)
     }
 
-
     fun toggleFavorite(propertyId: String) {
         viewModelScope.launch {
             val isFav = favoriteIds.value.contains(propertyId)
@@ -173,6 +189,55 @@ class HomeViewModel(
                 }
             } catch (e: Exception) {
                 _events.emit(HomeEvent.ShowMessage("Failed to update favorites"))
+            }
+        }
+    }
+
+    /**
+     * Toggle interested state for a property.
+     * Matches web's Home.jsx toggleInterestedHandler exactly:
+     * - Login guard
+     * - Per-property loading map
+     * - Optimistic count update on the local property list
+     * - Error message display
+     */
+    fun toggleInterested(propertyId: String) {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            viewModelScope.launch {
+                _events.emit(HomeEvent.ShowMessage("Please log in to manage interested properties."))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            // Set loading for this specific property
+            _interestedLoadingMap.value = _interestedLoadingMap.value + (propertyId to true)
+
+            try {
+                val isNowInterested = interestedRepository.toggleInterestedProperty(userId, propertyId)
+
+                // Optimistic count update on local property list (matches web's Home.jsx L385-393)
+                val current = _uiState.value
+                if (current is HomeUiState.Loaded) {
+                    _uiState.value = current.copy(
+                        properties = current.properties.map { property ->
+                            if (property.id == propertyId) {
+                                val currentCount = property.interestedCount
+                                property.copy(
+                                    interestedCount = if (isNowInterested) currentCount + 1
+                                    else maxOf(currentCount - 1, 0)
+                                )
+                            } else property
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _events.emit(HomeEvent.ShowMessage(
+                    e.message ?: "Error updating interested status. Please try again."
+                ))
+            } finally {
+                _interestedLoadingMap.value = _interestedLoadingMap.value - propertyId
             }
         }
     }

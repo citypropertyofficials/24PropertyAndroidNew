@@ -180,5 +180,22 @@
     <string name="land_property_saved_draft">Land property saved as draft.</string>
     <string name="land_property_added_success">Land property added successfully.</string>
     <string name="complete_required_land_fields">Complete the required land property fields.</string>
+
+    <!-- Interested Feature -->
+    <string name="mark_interested">Mark Interested</string>
+    <string name="interested">Interested</string>
+    <string name="updating_interested">Updating…</string>
+    <string name="interested_users_title">Interested Users</string>
+    <string name="no_interested_users_title">No Interested Users Yet</string>
+    <string name="no_interested_users_message">This property has not received any interested clicks yet.</string>
+    <string name="interested_users_error">Failed to load interested users. Please try again.</string>
+    <string name="cannot_interest_own_property">You cannot mark your own property as interested</string>
+    <string name="property_not_available">This property is no longer available</string>
+    <string name="login_to_manage_interested">Please log in to manage interested properties.</string>
+    <string name="interested_count">Interested (%1$d)</string>
+    <string name="error_updating_interested">Error updating interested status. Please try again.</string>
+    <string name="interested_property_label">Property</string>
+    <string name="not_set">Not Set</string>
+    <string name="close">Close</string>
 </resources>
 

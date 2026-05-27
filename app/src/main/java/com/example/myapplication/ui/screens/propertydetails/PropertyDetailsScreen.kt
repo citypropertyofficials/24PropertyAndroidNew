@@ -69,6 +69,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
+import com.example.myapplication.R
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.ui.theme.PrimaryStart
 import org.koin.androidx.compose.koinViewModel
@@ -83,6 +85,8 @@ fun PropertyDetailsScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val interestedIds by viewModel.interestedIds.collectAsState()
+    val isInterestedLoading by viewModel.isInterestedLoading.collectAsState()
     val currentImageIndex by viewModel.currentImageIndex.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -119,11 +123,15 @@ fun PropertyDetailsScreen(
                     PropertyDetailsContent(
                         property = property,
                         isFavorite = favoriteIds.contains(property.id),
+                        isInterested = interestedIds.contains(property.id),
+                        isInterestedLoading = isInterestedLoading,
+                        isOwner = property.owner == viewModel.currentUserId,
                         currentImageIndex = currentImageIndex,
                         onBack = onBack,
                         onPrevImage = { viewModel.prevImage() },
                         onNextImage = { viewModel.nextImage() },
                         onToggleFavorite = { viewModel.toggleFavorite(property.id) },
+                        onToggleInterested = { viewModel.toggleInterested(property.id) },
                         onCall = { viewModel.callOwner() },
                         onWhatsApp = { viewModel.whatsappOwner() }
                     )
@@ -137,11 +145,15 @@ fun PropertyDetailsScreen(
 private fun PropertyDetailsContent(
     property: Property,
     isFavorite: Boolean,
+    isInterested: Boolean,
+    isInterestedLoading: Boolean,
+    isOwner: Boolean,
     currentImageIndex: Int,
     onBack: () -> Unit,
     onPrevImage: () -> Unit,
     onNextImage: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onToggleInterested: () -> Unit,
     onCall: () -> Unit,
     onWhatsApp: () -> Unit
 ) {
@@ -321,6 +333,20 @@ private fun PropertyDetailsContent(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+
+                // Interested Button — hidden if owner
+                if (!isOwner) {
+                    SectionCard {
+                        SectionHeader(Icons.Filled.Star, "Interested")
+                        InterestedToggleButton(
+                            isInterested = isInterested,
+                            isLoading = isInterestedLoading,
+                            interestedCount = property.interestedCount,
+                            onClick = onToggleInterested
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
 
                 // Detail Sections
                 DetailSection("Type & Category", Icons.Filled.Home, listOfNotNull(
@@ -540,6 +566,63 @@ private fun ErrorContent(message: String, onBack: () -> Unit) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             Text("Go Back")
+        }
+    }
+}
+
+@Composable
+private fun InterestedToggleButton(
+    isInterested: Boolean,
+    isLoading: Boolean,
+    interestedCount: Int,
+    onClick: () -> Unit
+) {
+    val bgColor = if (isInterested) Color(0xFFFFA726).copy(alpha = 0.15f) else Color(0xFFF5F5F5)
+    val contentColor = if (isInterested) Color(0xFFE65100) else Color(0xFF757575)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .clickable(enabled = !isLoading) { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.5.dp,
+                color = contentColor
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = null,
+                tint = if (isInterested) Color(0xFFFFA726) else Color(0xFFBDBDBD),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = if (isInterested) {
+                stringResource(R.string.interested)
+            } else {
+                stringResource(R.string.mark_interested)
+            },
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = if (isInterested) FontWeight.Bold else FontWeight.Medium,
+            color = contentColor
+        )
+        if (interestedCount > 0) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "($interestedCount)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor.copy(alpha = 0.7f),
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

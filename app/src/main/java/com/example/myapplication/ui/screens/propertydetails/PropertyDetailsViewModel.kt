@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.FavoritesRepository
+import com.example.myapplication.data.repository.InterestedRepository
 import com.example.myapplication.data.repository.PropertyRepository
 import com.example.myapplication.utils.FirebaseConstants
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -40,11 +41,15 @@ sealed class PropertyDetailsEvent {
 class PropertyDetailsViewModel(
     private val propertyRepository: PropertyRepository,
     private val favoritesRepository: FavoritesRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val interestedRepository: InterestedRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PropertyDetailsUiState>(PropertyDetailsUiState.Loading)
     val uiState: StateFlow<PropertyDetailsUiState> = _uiState.asStateFlow()
+
+    val currentUserId: String?
+        get() = authRepository.getCurrentUserId()
 
     private val _events = MutableSharedFlow<PropertyDetailsEvent>()
     val events: SharedFlow<PropertyDetailsEvent> = _events.asSharedFlow()
@@ -56,6 +61,18 @@ class PropertyDetailsViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptySet()
         )
+
+    // Live interested IDs from Firestore snapshot listener
+    val interestedIds: StateFlow<Set<String>> = interestedRepository.observeInterestedPropertyIds()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
+
+    // Loading state for interested toggle
+    private val _isInterestedLoading = MutableStateFlow(false)
+    val isInterestedLoading: StateFlow<Boolean> = _isInterestedLoading.asStateFlow()
 
     // Image carousel position — managed here so it survives recompositions
     private val _currentImageIndex = MutableStateFlow(0)
@@ -107,6 +124,32 @@ class PropertyDetailsViewModel(
                 }
             } catch (e: Exception) {
                 _events.emit(PropertyDetailsEvent.ShowMessage("Failed to update favourites"))
+            }
+        }
+    }
+
+    /**
+     * Toggle interested state for the current property.
+     */
+    fun toggleInterested(propertyId: String) {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            viewModelScope.launch {
+                _events.emit(PropertyDetailsEvent.ShowMessage("Please log in to manage interested properties."))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _isInterestedLoading.value = true
+            try {
+                interestedRepository.toggleInterestedProperty(userId, propertyId)
+            } catch (e: Exception) {
+                _events.emit(PropertyDetailsEvent.ShowMessage(
+                    e.message ?: "Error updating interested status. Please try again."
+                ))
+            } finally {
+                _isInterestedLoading.value = false
             }
         }
     }

@@ -6,6 +6,8 @@ import com.example.myapplication.data.repository.AddPropertyRepository
 import com.example.myapplication.data.repository.AddPropertyRepositoryImpl
 import com.example.myapplication.data.repository.FavoritesRepository
 import com.example.myapplication.data.repository.FavoritesRepositoryImpl
+import com.example.myapplication.data.repository.InterestedRepository
+import com.example.myapplication.data.repository.InterestedRepositoryImpl
 import com.example.myapplication.data.repository.PropertyRepository
 import com.example.myapplication.data.repository.PropertyRepositoryImpl
 import com.example.myapplication.ui.screens.favorites.FavoritesViewModel
@@ -40,6 +42,7 @@ val appModule = module {
     singleOf(::AddPropertyRepositoryImpl) bind AddPropertyRepository::class
     singleOf(::FavoritesRepositoryImpl) bind FavoritesRepository::class
     singleOf(::DashboardRepositoryImpl) bind DashboardRepository::class
+    singleOf(::InterestedRepositoryImpl) bind InterestedRepository::class
     viewModelOf(::LoginViewModel)
     viewModelOf(::ProfileViewModel)
     viewModelOf(::HomeViewModel)

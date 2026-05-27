@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.ui.common.AppFullScreenLoading
+import com.example.myapplication.ui.common.InterestedUsersBottomSheet
 import com.example.myapplication.ui.common.OwnerPropertyCard
 import org.koin.androidx.compose.koinViewModel
 
@@ -55,6 +56,12 @@ fun MyPropertiesScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var propertyToDelete by remember { mutableStateOf<Property?>(null) }
+
+    // Interested users bottom sheet state
+    var interestedPropertyForSheet by remember { mutableStateOf<Property?>(null) }
+    val interestedUsers by viewModel.interestedUsers.collectAsState()
+    val isLoadingInterestedUsers by viewModel.isLoadingInterestedUsers.collectAsState()
+    val interestedUsersError by viewModel.interestedUsersError.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -150,6 +157,10 @@ fun MyPropertiesScreen(
                                         },
                                         onDelete = {
                                             propertyToDelete = property
+                                        },
+                                        onViewInterestedUsers = {
+                                            interestedPropertyForSheet = property
+                                            viewModel.loadInterestedUsers(property.id)
                                         }
                                     )
                                 }
@@ -213,6 +224,17 @@ fun MyPropertiesScreen(
                     Text(stringResource(R.string.cancel))
                 }
             }
+        )
+    }
+
+    // Interested Users Bottom Sheet
+    interestedPropertyForSheet?.let { property ->
+        InterestedUsersBottomSheet(
+            propertyName = property.name,
+            interestedUsers = interestedUsers,
+            isLoading = isLoadingInterestedUsers,
+            errorMessage = interestedUsersError,
+            onDismiss = { interestedPropertyForSheet = null }
         )
     }
 }

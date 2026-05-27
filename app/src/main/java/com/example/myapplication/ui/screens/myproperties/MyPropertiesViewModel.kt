@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.R
+import com.example.myapplication.data.model.InterestedUser
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.InterestedRepository
 import com.example.myapplication.data.repository.PropertyRepository
 import com.example.myapplication.utils.FirebaseConstants
 import com.google.firebase.firestore.DocumentSnapshot
@@ -48,7 +50,8 @@ sealed class MyPropertiesEvent {
 
 class MyPropertiesViewModel(
     private val authRepository: AuthRepository,
-    private val propertyRepository: PropertyRepository
+    private val propertyRepository: PropertyRepository,
+    private val interestedRepository: InterestedRepository
 ) : ViewModel() {
 
     private companion object {
@@ -64,6 +67,16 @@ class MyPropertiesViewModel(
     private var currentFilter = MyPropertiesFilter.ALL
     private var nextCursor: DocumentSnapshot? = null
     private val pageSize = 8
+
+    // Interested users state (for owner bottom sheet)
+    private val _interestedUsers = MutableStateFlow<List<InterestedUser>>(emptyList())
+    val interestedUsers: StateFlow<List<InterestedUser>> = _interestedUsers.asStateFlow()
+
+    private val _isLoadingInterestedUsers = MutableStateFlow(false)
+    val isLoadingInterestedUsers: StateFlow<Boolean> = _isLoadingInterestedUsers.asStateFlow()
+
+    private val _interestedUsersError = MutableStateFlow<String?>(null)
+    val interestedUsersError: StateFlow<String?> = _interestedUsersError.asStateFlow()
 
     init {
         loadProperties(reset = true)
@@ -214,6 +227,26 @@ class MyPropertiesViewModel(
                         currentFilter = currentFilter
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Fetch interested users for a given property (owner view).
+     * Matches web's getInterestedUsersForProperty().
+     */
+    fun loadInterestedUsers(propertyId: String) {
+        viewModelScope.launch {
+            _isLoadingInterestedUsers.value = true
+            _interestedUsersError.value = null
+            _interestedUsers.value = emptyList()
+
+            try {
+                _interestedUsers.value = interestedRepository.getInterestedUsersForProperty(propertyId)
+            } catch (e: Exception) {
+                _interestedUsersError.value = e.message ?: "Failed to load interested users"
+            } finally {
+                _isLoadingInterestedUsers.value = false
             }
         }
     }

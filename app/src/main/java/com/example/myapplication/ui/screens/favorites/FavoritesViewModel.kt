@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.FavoritesRepository
+import com.example.myapplication.data.repository.InterestedRepository
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,8 @@ sealed class FavoritesEvent {
 
 class FavoritesViewModel(
     private val authRepository: AuthRepository,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesRepository: FavoritesRepository,
+    private val interestedRepository: InterestedRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
@@ -50,8 +52,23 @@ class FavoritesViewModel(
             initialValue = emptySet()
         )
 
+    // Interested property IDs — real-time listener (same pattern as favoriteIds)
+    val interestedIds: StateFlow<Set<String>> = interestedRepository.observeInterestedPropertyIds()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
+
+    // Per-property loading state for interested toggle
+    private val _interestedLoadingMap = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val interestedLoadingMap: StateFlow<Map<String, Boolean>> = _interestedLoadingMap.asStateFlow()
+
     private var nextCursor: DocumentSnapshot? = null
     private val pageSize = 10
+
+    // Current user ID for ownership check
+    val currentUserId: String? get() = authRepository.getCurrentUserId()
 
     init {
         loadFavorites(reset = true)
@@ -170,6 +187,50 @@ class FavoritesViewModel(
                 }
             } catch (e: Exception) {
                 _events.emit(FavoritesEvent.ShowMessage("Failed to update favorites"))
+            }
+        }
+    }
+
+    /**
+     * Toggle interested state for a property.
+     * Matches web's Favorites.jsx handleToggleInterested exactly.
+     */
+    fun toggleInterested(propertyId: String) {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            viewModelScope.launch {
+                _events.emit(FavoritesEvent.ShowMessage("Please log in to manage interested properties."))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _interestedLoadingMap.value = _interestedLoadingMap.value + (propertyId to true)
+
+            try {
+                val isNowInterested = interestedRepository.toggleInterestedProperty(userId, propertyId)
+
+                // Optimistic count update (matches web's Favorites.jsx L145-149)
+                val current = _uiState.value
+                if (current is FavoritesUiState.Loaded) {
+                    _uiState.value = current.copy(
+                        properties = current.properties.map { property ->
+                            if (property.id == propertyId) {
+                                val currentCount = property.interestedCount
+                                property.copy(
+                                    interestedCount = if (isNowInterested) currentCount + 1
+                                    else maxOf(currentCount - 1, 0)
+                                )
+                            } else property
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _events.emit(FavoritesEvent.ShowMessage(
+                    e.message ?: "Error updating interested status. Please try again."
+                ))
+            } finally {
+                _interestedLoadingMap.value = _interestedLoadingMap.value - propertyId
             }
         }
     }
