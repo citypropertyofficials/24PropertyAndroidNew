@@ -204,6 +204,10 @@ internal fun buildCommercialPropertyPayload(
         FirebaseConstants.FIELD_UPDATED_AT to FieldValue.serverTimestamp(),
         FirebaseConstants.FIELD_IMAGES to imageUrls
     )
+    val liftType = values["liftType"].orEmpty()
+    payload[FirebaseConstants.FIELD_PASSENGER_LIFT] = if (liftType in setOf("Passenger Lift", "Personal", "Common")) "Yes" else "No"
+    payload[FirebaseConstants.FIELD_SERVICE_LIFT] = if (liftType == "Service Lift") "Yes" else "No"
+
     if (includeCreatedAt) {
         payload[FirebaseConstants.FIELD_CREATED_AT] = FieldValue.serverTimestamp()
     }

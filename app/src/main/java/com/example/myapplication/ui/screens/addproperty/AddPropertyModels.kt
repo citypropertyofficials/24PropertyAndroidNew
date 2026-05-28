@@ -136,7 +136,7 @@ private val villaTypes = setOf("Individual House", "Villa", "Bungalow", "Farmhou
 
 val residentialAmenities = listOf(
     "Swimming Pool", "Gym", "Garden", "Security", "Elevator", "Balcony", "Air Conditioning",
-    "Heating", "Laundry", "Storage", "Internet", "Furnished", "Parking", "Power Backup",
+    "Heating", "Laundry", "Storage", "High-Speed Internet", "Furnished", "Parking", "Power Backup",
     "Water Supply", "Waste Disposal", "Landscaping", "CCTV", "Gated Community", "Intercom",
     "Visitor Parking", "Gas Pipeline", "Club", "Playground", "House Keeping", "Fire Safety",
     "Children Play Area", "Servant Room", "Park"
@@ -452,7 +452,7 @@ val industrialSections = listOf(
     PropertyFormSection(
         title = "Charges & Inclusions",
         fields = listOf(
-            PropertyFieldDefinition("dampUpsIncluded", "DG & UPS Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
+            PropertyFieldDefinition("dampUpsIncluded", "Damp UPS Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
             PropertyFieldDefinition("electricityIncluded", "Electricity Charge Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
             PropertyFieldDefinition("waterChargesIncluded", "Water Charges Included", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No")
         )
