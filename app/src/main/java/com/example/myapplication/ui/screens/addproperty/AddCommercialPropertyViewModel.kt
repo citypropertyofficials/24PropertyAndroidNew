@@ -227,9 +227,17 @@ class AddCommercialPropertyViewModel(
                 val property = addPropertyRepository.getProperty(propertyId)
                     ?: error("Property not found.")
                 val images = property[FirebaseConstants.FIELD_IMAGES].asStringList()
+                val fieldValues = property.baseFieldValues(defaultCommercialFieldValues()).apply {
+                    if (this["liftType"].isNullOrBlank()) {
+                        this["liftType"] = resolveCommercialLiftType(
+                            passengerLift = property[FirebaseConstants.FIELD_PASSENGER_LIFT].asString(),
+                            serviceLift = property[FirebaseConstants.FIELD_SERVICE_LIFT].asString()
+                        )
+                    }
+                }
                 _uiState.value = AddCommercialPropertyUiState(
                     listingType = property[FirebaseConstants.FIELD_LISTING_TYPE].asString().ifBlank { LISTING_TYPE_RENT },
-                    fieldValues = property.baseFieldValues(defaultCommercialFieldValues()),
+                    fieldValues = fieldValues,
                     amenities = property[FirebaseConstants.FIELD_AMENITIES].asStringList().toSet(),
                     propertyId = propertyId,
                     isEditMode = true,

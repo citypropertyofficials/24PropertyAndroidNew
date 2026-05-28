@@ -37,6 +37,14 @@ internal fun normalizePossessionStatusForForm(value: String): String {
     }
 }
 
+internal fun resolveCommercialLiftType(passengerLift: String, serviceLift: String): String {
+    return when {
+        serviceLift.trim().equals("Yes", ignoreCase = true) -> "Service Lift"
+        passengerLift.trim().equals("Yes", ignoreCase = true) -> "Passenger Lift"
+        else -> "None"
+    }
+}
+
 internal fun Map<String, Any?>.baseFieldValues(defaults: Map<String, String>): MutableMap<String, String> {
     val values = defaults.toMutableMap()
     defaults.keys.forEach { key ->
