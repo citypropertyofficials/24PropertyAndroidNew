@@ -339,8 +339,12 @@ class PropertyRepositoryImpl(
         }
     }
 
-    private fun str(data: Map<String, Any?>, key: String): String =
-        data[key] as? String ?: ""
+    private fun str(data: Map<String, Any?>, key: String): String = when (val value = data[key]) {
+        null -> ""
+        is String -> value
+        is Number -> value.toString()
+        else -> value.toString()
+    }
 
     private fun isPropertyPublished(data: Map<String, Any?>): Boolean {
         return (data[FirebaseConstants.FIELD_STATUS] as? String ?: "") !=
