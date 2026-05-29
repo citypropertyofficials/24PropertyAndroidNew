@@ -1,5 +1,7 @@
 package com.example.myapplication.data.model
 
+import com.google.firebase.Timestamp
+
 /**
  * Data model for an interested user snapshot.
  * Stored at: properties/{propertyId}/interestedUsers/{userId}
@@ -10,5 +12,6 @@ data class InterestedUser(
     val userId: String = "",
     val name: String = "",
     val email: String = "",
-    val mobile: String = ""
+    val mobile: String = "",
+    val createdAt: Timestamp? = null
 )
