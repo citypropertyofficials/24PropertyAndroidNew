@@ -130,7 +130,7 @@ class AddLandPropertyViewModel(
                 }
                 val ownerRole = authRepository.getCurrentUserRole() ?: FirebaseConstants.ROLE_USER
 
-                if (!isDraft && currentState.propertyId == null && userData.maxPropertiesAllowed != null) {
+                if (currentState.propertyId == null && userData.maxPropertiesAllowed != null) {
                     val liveCount = addPropertyRepository.getUserPropertyCount(userId)
                     if (liveCount >= userData.maxPropertiesAllowed) {
                         error("You have reached your property limit (${liveCount}/${userData.maxPropertiesAllowed}).")

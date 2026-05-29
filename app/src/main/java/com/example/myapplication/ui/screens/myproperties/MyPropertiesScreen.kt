@@ -1,7 +1,9 @@
 package com.example.myapplication.ui.screens.myproperties
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -131,7 +133,40 @@ fun MyPropertiesScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    // Property count badge (shows limit for normal users)
+                                    contentState.maxPropertiesAllowed?.let { maxAllowed ->
+                                        val countText = stringResource(
+                                            R.string.property_count_format,
+                                            contentState.totalPropertyCount,
+                                            maxAllowed
+                                        )
+                                        val isAtLimit = contentState.totalPropertyCount >= maxAllowed
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = countText,
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = if (isAtLimit) {
+                                                    MaterialTheme.colorScheme.error
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                            if (isAtLimit) {
+                                                Text(
+                                                    text = stringResource(R.string.property_limit_reached),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     MyPropertiesFilterRow(
                                         currentFilter = contentState.currentFilter,
                                         onFilterSelected = viewModel::updateFilter
