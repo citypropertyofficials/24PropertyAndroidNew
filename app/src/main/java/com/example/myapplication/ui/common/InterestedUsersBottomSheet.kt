@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,7 +63,8 @@ fun InterestedUsersBottomSheet(
     interestedUsers: List<InterestedUser>,
     isLoading: Boolean,
     errorMessage: String?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onShare: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -122,12 +124,23 @@ fun InterestedUsersBottomSheet(
                         )
                     }
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.close),
-                        tint = Color.White.copy(alpha = 0.9f)
-                    )
+                Row {
+                    if (!isLoading && errorMessage == null && interestedUsers.isNotEmpty()) {
+                        IconButton(onClick = onShare) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = stringResource(R.string.share),
+                                tint = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
                 }
             }
 

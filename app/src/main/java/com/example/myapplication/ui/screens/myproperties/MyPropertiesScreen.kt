@@ -43,6 +43,8 @@ import com.example.myapplication.ui.common.AppFullScreenLoading
 import com.example.myapplication.ui.common.InterestedUsersBottomSheet
 import com.example.myapplication.ui.common.OwnerPropertyCard
 import org.koin.androidx.compose.koinViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -234,7 +236,31 @@ fun MyPropertiesScreen(
             interestedUsers = interestedUsers,
             isLoading = isLoadingInterestedUsers,
             errorMessage = interestedUsersError,
-            onDismiss = { interestedPropertyForSheet = null }
+            onDismiss = { interestedPropertyForSheet = null },
+            onShare = {
+                if (interestedUsers.isEmpty()) return@InterestedUsersBottomSheet
+                val dateFormatter = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+                val shareText = buildString {
+                    appendLine("Interested Users for \"${property.name}\"")
+                    appendLine()
+                    interestedUsers.forEachIndexed { index, user ->
+                        appendLine("${index + 1}. ${user.name.ifBlank { "Not Set" }}")
+                        if (user.email.isNotBlank()) appendLine("   Email: ${user.email}")
+                        if (user.mobile.isNotBlank()) appendLine("   Mobile: ${user.mobile}")
+                        val dateStr = user.createdAt?.let { dateFormatter.format(it.toDate()) } ?: "—"
+                        appendLine("   Date: $dateStr")
+                        appendLine()
+                    }
+                    append("Total: ${interestedUsers.size} interested user${if (interestedUsers.size != 1) "s" else ""}")
+                }
+                val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_SUBJECT, context.getString(R.string.share_interested_users_subject, property.name))
+                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                }
+                val chooser = android.content.Intent.createChooser(sendIntent, context.getString(R.string.share))
+                context.startActivity(chooser)
+            }
         )
     }
 }

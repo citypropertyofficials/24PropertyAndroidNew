@@ -40,6 +40,8 @@
     <string name="cancel">Cancel</string>
     <string name="back">Back</string>
     <string name="retry">Retry</string>
+    <string name="share">Share</string>
+    <string name="share_interested_users_subject">Interested Users - %1$s</string>
 
     <!-- Profile Messages -->
     <string name="complete_profile_message">Please complete your profile to continue using the app.</string>
