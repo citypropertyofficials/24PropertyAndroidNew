@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.myapplication.ui.theme.BorderColor
+import com.example.myapplication.utils.IndianLocations
 import com.example.myapplication.ui.theme.PrimaryEnd
 import com.example.myapplication.ui.theme.PrimaryStart
 import com.example.myapplication.ui.theme.TextPrimary
@@ -697,21 +698,39 @@ fun LocationSection(
     mapsApiConfigured: Boolean,
     onLocationResolved: (SelectedLocation, Map<String, String>) -> Unit
 ) {
+    val currentStateName = fieldValues["state"].orEmpty()
+    val districts = remember(currentStateName) {
+        IndianLocations.getDistrictsForState(currentStateName)
+    }
+
+    // If current city is not in the districts list for the selected state, clear it
+    val currentCity = fieldValues["city"].orEmpty()
+    LaunchedEffect(districts, currentCity) {
+        if (currentCity.isNotBlank() && districts.isNotEmpty() && districts.none { it.equals(currentCity, ignoreCase = true) }) {
+            onValueChange("city", "")
+        }
+    }
+
     SectionCard(title = "Location Information") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppTextField(
-                "State",
-                fieldValues["state"].orEmpty(),
-                { onValueChange("state", it) },
-                error = fieldErrors["state"],
-                required = true
+            DropdownField(
+                label = "State",
+                selectedValue = currentStateName,
+                options = IndianLocations.allStateNames,
+                onSelected = {
+                    onValueChange("state", it)
+                    onValueChange("city", "")
+                },
+                required = true,
+                error = fieldErrors["state"]
             )
-            AppTextField(
-                "Dist/City",
-                fieldValues["city"].orEmpty(),
-                { onValueChange("city", it) },
-                error = fieldErrors["city"],
-                required = true
+            DropdownField(
+                label = "Dist/City",
+                selectedValue = currentCity,
+                options = if (districts.isEmpty()) listOf("Select State First") else districts,
+                onSelected = { onValueChange("city", it) },
+                required = true,
+                error = fieldErrors["city"]
             )
             AppTextField(
                 "Name/Street/Area",
