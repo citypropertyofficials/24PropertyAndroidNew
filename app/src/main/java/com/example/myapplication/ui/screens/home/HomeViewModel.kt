@@ -127,6 +127,21 @@ class HomeViewModel(
         loadProperties(reset = true)
     }
 
+    fun applyFiltersWithPropertyType(
+        propertyType: String,
+        filters: Map<String, Any>,
+        searchAreas: List<HomeSearchArea>,
+        locationRadiusKm: Int
+    ) {
+        _uiState.value = _uiState.value.copy(
+            selectedPropertyType = propertyType,
+            appliedFilters = HomeFilters(filters),
+            appliedSearchAreas = searchAreas,
+            locationRadiusKm = locationRadiusKm
+        )
+        loadProperties(reset = true)
+    }
+
     fun clearFilters() {
         _uiState.value = _uiState.value.copy(appliedFilters = HomeFilters())
         loadProperties(reset = true)

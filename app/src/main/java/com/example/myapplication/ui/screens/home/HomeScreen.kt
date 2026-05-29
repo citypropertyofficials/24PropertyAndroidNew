@@ -221,15 +221,15 @@ fun HomeScreen(
         HomeFilterDialog(
             context = context,
             sheetState = filterSheetState,
-            selectedPropertyType = uiState.selectedPropertyType,
+            initialPropertyType = uiState.selectedPropertyType,
             listingType = uiState.selectedListingType,
             initialFilters = uiState.appliedFilters.values,
             initialSearchAreas = uiState.appliedSearchAreas,
             initialLocationRadius = uiState.locationRadiusKm,
             onDismiss = { showFilterDialog = false },
-            onApply = { filters, searchAreas, radiusKm ->
+            onApply = { propertyType, filters, searchAreas, radiusKm ->
                 showFilterDialog = false
-                viewModel.applyFilters(filters, searchAreas, radiusKm)
+                viewModel.applyFiltersWithPropertyType(propertyType, filters, searchAreas, radiusKm)
             }
         )
     }
@@ -530,16 +530,17 @@ private fun LocationSearchField(
 private fun HomeFilterDialog(
     context: Context,
     sheetState: SheetState,
-    selectedPropertyType: String,
+    initialPropertyType: String,
     listingType: String,
     initialFilters: Map<String, Any>,
     initialSearchAreas: List<HomeSearchArea>,
     initialLocationRadius: Int,
     onDismiss: () -> Unit,
-    onApply: (Map<String, Any>, List<HomeSearchArea>, Int) -> Unit
+    onApply: (String, Map<String, Any>, List<HomeSearchArea>, Int) -> Unit
 ) {
-    val priceRange = remember(selectedPropertyType, listingType) {
-        getHomePriceRange(selectedPropertyType, listingType)
+    var draftPropertyType by remember { mutableStateOf(initialPropertyType) }
+    val priceRange = remember(draftPropertyType, listingType) {
+        getHomePriceRange(draftPropertyType, listingType)
     }
     var draftFilters by remember(initialFilters, priceRange) {
         mutableStateOf(initialFilters.toMutableMap().apply {
@@ -550,8 +551,8 @@ private fun HomeFilterDialog(
     var searchAreas by remember(initialSearchAreas) { mutableStateOf(initialSearchAreas) }
     var radiusKm by remember(initialLocationRadius) { mutableStateOf(initialLocationRadius) }
 
-    val filters = remember(selectedPropertyType, priceRange) {
-        getFilterDefinitions(selectedPropertyType, priceRange)
+    val filters = remember(draftPropertyType, priceRange) {
+        getFilterDefinitions(draftPropertyType, priceRange)
     }
 
     val activeFilterCount = remember(draftFilters, searchAreas) {
@@ -594,6 +595,41 @@ private fun HomeFilterDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.weight(1f, fill = false)
             ) {
+                item {
+                    Text(
+                        text = "Property Type",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        items(
+                            listOf(
+                                HOME_PROPERTY_TYPE_RESIDENTIAL to "Residential",
+                                HOME_PROPERTY_TYPE_COMMERCIAL to "Commercial",
+                                HOME_PROPERTY_TYPE_INDUSTRIAL to "Industrial",
+                                HOME_PROPERTY_TYPE_LAND to "Land"
+                            )
+                        ) { (type, label) ->
+                            PropertyTypePill(
+                                label = label,
+                                selected = draftPropertyType == type,
+                                onClick = {
+                                    if (draftPropertyType != type) {
+                                        draftPropertyType = type
+                                        draftFilters = mutableMapOf(
+                                            "priceMin" to priceRange.min.toInt(),
+                                            "priceMax" to priceRange.max.toInt()
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
                 item {
                     LocationSearchField(
                         context = context,
@@ -715,7 +751,7 @@ private fun HomeFilterDialog(
                                 }
                             }
                         }
-                        onApply(cleaned, searchAreas, radiusKm)
+                        onApply(draftPropertyType, cleaned, searchAreas, radiusKm)
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
