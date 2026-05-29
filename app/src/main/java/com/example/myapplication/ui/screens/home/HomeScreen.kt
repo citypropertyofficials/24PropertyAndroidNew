@@ -66,9 +66,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.data.repository.LocationRestriction
 import com.example.myapplication.ui.common.AppFullScreenLoading
 import com.example.myapplication.ui.common.PropertyCard
+import com.example.myapplication.ui.screens.addproperty.DropdownField
 import com.example.myapplication.ui.theme.BackgroundPrimary
+import com.example.myapplication.utils.IndianLocations
 import com.example.myapplication.ui.theme.BorderColor
 import com.example.myapplication.ui.theme.PrimaryEnd
 import com.example.myapplication.ui.theme.PrimaryStart
@@ -221,15 +224,16 @@ fun HomeScreen(
         HomeFilterDialog(
             context = context,
             sheetState = filterSheetState,
-            selectedPropertyType = uiState.selectedPropertyType,
+            initialPropertyType = uiState.selectedPropertyType,
             listingType = uiState.selectedListingType,
             initialFilters = uiState.appliedFilters.values,
             initialSearchAreas = uiState.appliedSearchAreas,
             initialLocationRadius = uiState.locationRadiusKm,
+            initialLocationRestriction = uiState.locationRestriction,
             onDismiss = { showFilterDialog = false },
-            onApply = { filters, searchAreas, radiusKm ->
+            onApply = { propertyType, filters, searchAreas, radiusKm, locationRestriction ->
                 showFilterDialog = false
-                viewModel.applyFilters(filters, searchAreas, radiusKm)
+                viewModel.applyFiltersWithPropertyType(propertyType, filters, searchAreas, radiusKm, locationRestriction)
             }
         )
     }
@@ -411,7 +415,8 @@ private fun LocationSearchField(
     context: Context,
     selectedAreas: List<HomeSearchArea>,
     onSelectedAreasChange: (List<HomeSearchArea>) -> Unit,
-    onOpenFilter: () -> Unit
+    onOpenFilter: () -> Unit,
+    locationRestriction: LocationRestriction? = null
 ) {
     val placesClient = rememberPlacesClient(context)
     val sessionToken = remember { AutocompleteSessionToken.newInstance() }
@@ -420,20 +425,43 @@ private fun LocationSearchField(
     var predictions by remember { mutableStateOf<List<AutocompletePrediction>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, locationRestriction) {
         if (query.length < 2 || placesClient == null) {
             predictions = emptyList()
             return@LaunchedEffect
         }
         delay(250)
         isSearching = true
+
+        // Append regional terms to bias Google Places toward the selected region.
+        var finalQuery = query.trim()
+        if (locationRestriction != null) {
+            val stateName = locationRestriction.stateName
+            val districtName = locationRestriction.districtName
+            val suffix = buildString {
+                if (districtName.isNotBlank()) append(", ").append(districtName)
+                if (stateName.isNotBlank()) append(", ").append(stateName)
+                append(", India")
+            }
+            finalQuery = "$finalQuery$suffix"
+        }
+
         predictions = runCatching {
-            val request = FindAutocompletePredictionsRequest.builder()
+            val requestBuilder = FindAutocompletePredictionsRequest.builder()
                 .setSessionToken(sessionToken)
                 .setCountries(listOf("IN"))
-                .setQuery(query)
-                .build()
+                .setQuery(finalQuery)
+            val request = requestBuilder.build()
             placesClient.findAutocompletePredictions(request).await().autocompletePredictions
+                .filter { prediction ->
+                    if (locationRestriction == null) return@filter true
+                    val text = prediction.getFullText(null).toString().lowercase()
+                    val stateName = locationRestriction.stateName
+                    val districtName = locationRestriction.districtName
+                    if (stateName.isNotBlank() && !text.contains(stateName.lowercase())) return@filter false
+                    if (districtName.isNotBlank() && !text.contains(districtName.lowercase())) return@filter false
+                    true
+                }
         }.getOrDefault(emptyList())
         isSearching = false
     }
@@ -530,16 +558,18 @@ private fun LocationSearchField(
 private fun HomeFilterDialog(
     context: Context,
     sheetState: SheetState,
-    selectedPropertyType: String,
+    initialPropertyType: String,
     listingType: String,
     initialFilters: Map<String, Any>,
     initialSearchAreas: List<HomeSearchArea>,
     initialLocationRadius: Int,
+    initialLocationRestriction: LocationRestriction? = null,
     onDismiss: () -> Unit,
-    onApply: (Map<String, Any>, List<HomeSearchArea>, Int) -> Unit
+    onApply: (String, Map<String, Any>, List<HomeSearchArea>, Int, LocationRestriction?) -> Unit
 ) {
-    val priceRange = remember(selectedPropertyType, listingType) {
-        getHomePriceRange(selectedPropertyType, listingType)
+    var draftPropertyType by remember { mutableStateOf(initialPropertyType) }
+    val priceRange = remember(draftPropertyType, listingType) {
+        getHomePriceRange(draftPropertyType, listingType)
     }
     var draftFilters by remember(initialFilters, priceRange) {
         mutableStateOf(initialFilters.toMutableMap().apply {
@@ -550,8 +580,27 @@ private fun HomeFilterDialog(
     var searchAreas by remember(initialSearchAreas) { mutableStateOf(initialSearchAreas) }
     var radiusKm by remember(initialLocationRadius) { mutableStateOf(initialLocationRadius) }
 
-    val filters = remember(selectedPropertyType, priceRange) {
-        getFilterDefinitions(selectedPropertyType, priceRange)
+    var draftState by remember(initialLocationRestriction) {
+        mutableStateOf(initialLocationRestriction?.stateName ?: "")
+    }
+    var draftDistrict by remember(initialLocationRestriction) {
+        mutableStateOf(initialLocationRestriction?.districtName ?: "")
+    }
+    var validationError by remember { mutableStateOf<String?>(null) }
+    val districts = remember(draftState) {
+        IndianLocations.getDistrictsForState(draftState)
+    }
+    LaunchedEffect(districts, draftDistrict) {
+        if (draftDistrict.isNotBlank() && districts.isNotEmpty() && districts.none { it.equals(draftDistrict, ignoreCase = true) }) {
+            draftDistrict = ""
+        }
+    }
+    LaunchedEffect(draftState, draftDistrict, searchAreas) {
+        validationError = null
+    }
+
+    val filters = remember(draftPropertyType, priceRange) {
+        getFilterDefinitions(draftPropertyType, priceRange)
     }
 
     val activeFilterCount = remember(draftFilters, searchAreas) {
@@ -595,11 +644,77 @@ private fun HomeFilterDialog(
                 modifier = Modifier.weight(1f, fill = false)
             ) {
                 item {
+                    Text(
+                        text = "Property Type",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        items(
+                            listOf(
+                                HOME_PROPERTY_TYPE_RESIDENTIAL to "Residential",
+                                HOME_PROPERTY_TYPE_COMMERCIAL to "Commercial",
+                                HOME_PROPERTY_TYPE_INDUSTRIAL to "Industrial",
+                                HOME_PROPERTY_TYPE_LAND to "Land"
+                            )
+                        ) { (type, label) ->
+                            PropertyTypePill(
+                                label = label,
+                                selected = draftPropertyType == type,
+                                onClick = {
+                                    if (draftPropertyType != type) {
+                                        draftPropertyType = type
+                                        draftFilters = mutableMapOf(
+                                            "priceMin" to priceRange.min.toInt(),
+                                            "priceMax" to priceRange.max.toInt()
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+                item {
+                    Text(
+                        text = "Location Preference",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    DropdownField(
+                        label = "State",
+                        selectedValue = draftState,
+                        options = IndianLocations.allStateNames,
+                        onSelected = {
+                            draftState = it
+                            draftDistrict = ""
+                        }
+                    )
+                    DropdownField(
+                        label = "District",
+                        selectedValue = draftDistrict,
+                        options = if (districts.isEmpty()) listOf("Select State First") else districts,
+                        onSelected = { draftDistrict = it }
+                    )
+                }
+                item {
+                    val restriction = if (draftState.isNotBlank()) {
+                        LocationRestriction(
+                            stateCode = IndianLocations.getStateByName(draftState)?.isoCode ?: "",
+                            stateName = draftState,
+                            districtName = draftDistrict
+                        )
+                    } else null
                     LocationSearchField(
                         context = context,
                         selectedAreas = searchAreas,
                         onSelectedAreasChange = { searchAreas = it },
-                        onOpenFilter = {}
+                        onOpenFilter = {},
+                        locationRestriction = restriction
                     )
                 }
                 if (searchAreas.isNotEmpty()) {
@@ -681,6 +796,15 @@ private fun HomeFilterDialog(
                     }
                 }
             }
+            if (validationError != null) {
+                Text(
+                    text = validationError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -694,6 +818,9 @@ private fun HomeFilterDialog(
                         )
                         searchAreas = emptyList()
                         radiusKm = 1
+                        draftState = ""
+                        draftDistrict = ""
+                        validationError = null
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp)
@@ -702,20 +829,32 @@ private fun HomeFilterDialog(
                 }
                 Button(
                     onClick = {
-                        val cleaned = buildMap<String, Any> {
-                            draftFilters.forEach { (key, value) ->
-                                when (value) {
-                                    is List<*> -> {
-                                        val list = (value as? List<String>)?.filter { it.isNotBlank() }
-                                        if (!list.isNullOrEmpty()) put(key, list)
+                        when {
+                            draftState.isBlank() -> validationError = "Please select a state"
+                            draftDistrict.isBlank() -> validationError = "Please select a district"
+                            searchAreas.isEmpty() -> validationError = "Please select at least one search area"
+                            else -> {
+                                val cleaned = buildMap<String, Any> {
+                                    draftFilters.forEach { (key, value) ->
+                                        when (value) {
+                                            is List<*> -> {
+                                                val list = (value as? List<String>)?.filter { it.isNotBlank() }
+                                                if (!list.isNullOrEmpty()) put(key, list)
+                                            }
+                                            is String -> if (value.isNotBlank()) put(key, value)
+                                            is Int -> put(key, value)
+                                            is Float -> put(key, value.toInt())
+                                        }
                                     }
-                                    is String -> if (value.isNotBlank()) put(key, value)
-                                    is Int -> put(key, value)
-                                    is Float -> put(key, value.toInt())
                                 }
+                                val locationRestriction = LocationRestriction(
+                                    stateCode = IndianLocations.getStateByName(draftState)?.isoCode ?: "",
+                                    stateName = draftState,
+                                    districtName = draftDistrict
+                                )
+                                onApply(draftPropertyType, cleaned, searchAreas, radiusKm, locationRestriction)
                             }
                         }
-                        onApply(cleaned, searchAreas, radiusKm)
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),

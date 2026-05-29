@@ -7,6 +7,7 @@ import com.example.myapplication.R
 import com.example.myapplication.data.model.InterestedUser
 import com.example.myapplication.data.model.Property
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.AuthResult
 import com.example.myapplication.data.repository.InterestedRepository
 import com.example.myapplication.data.repository.PropertyRepository
 import com.example.myapplication.utils.FirebaseConstants
@@ -32,7 +33,9 @@ data class MyPropertiesContentState(
     val hasMore: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
-    val deletingPropertyId: String? = null
+    val deletingPropertyId: String? = null,
+    val totalPropertyCount: Int = 0,
+    val maxPropertiesAllowed: Int? = null
 )
 
 sealed class MyPropertiesUiState {
@@ -162,9 +165,16 @@ class MyPropertiesViewModel(
                     ?: throw IllegalStateException()
                 val viewerRole = authRepository.getCurrentUserRole() ?: "user"
 
+                // Fetch user data for property limit
+                val userData = when (val result = authRepository.getUserData(userId)) {
+                    is AuthResult.Success -> result.data
+                    else -> null
+                }
+                val maxAllowed = userData?.maxPropertiesAllowed
+
                 Log.d(
                     TAG,
-                    "loadProperties: reset=$reset keepRefreshState=$keepRefreshState filter=${currentFilter.value} userId=$userId viewerRole=$viewerRole cursor=${if (reset) null else nextCursor?.id}"
+                    "loadProperties: reset=$reset keepRefreshState=$keepRefreshState filter=${currentFilter.value} userId=$userId viewerRole=$viewerRole cursor=${if (reset) null else nextCursor?.id} maxAllowed=$maxAllowed"
                 )
 
                 val result = propertyRepository.fetchUserPropertiesPage(
@@ -195,6 +205,13 @@ class MyPropertiesViewModel(
                     currentProperties + result.items
                 }
 
+                // Count all active properties (drafts + published) for limit display
+                val totalCount = if (reset) {
+                    propertyRepository.getUserActivePropertyCount(userId)
+                } else {
+                    existingContent?.state?.totalPropertyCount ?: 0
+                }
+
                 _uiState.value = MyPropertiesUiState.Content(
                     MyPropertiesContentState(
                         properties = updatedProperties,
@@ -202,13 +219,15 @@ class MyPropertiesViewModel(
                         hasMore = result.hasMore,
                         isLoadingMore = false,
                         isRefreshing = false,
-                        deletingPropertyId = null
+                        deletingPropertyId = null,
+                        totalPropertyCount = totalCount,
+                        maxPropertiesAllowed = maxAllowed
                     )
                 )
 
                 Log.d(
                     TAG,
-                    "uiState updated: totalProperties=${updatedProperties.size} currentFilter=${currentFilter.value}"
+                    "uiState updated: totalProperties=${updatedProperties.size} totalCount=$totalCount maxAllowed=$maxAllowed currentFilter=${currentFilter.value}"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "loadProperties failed", e)

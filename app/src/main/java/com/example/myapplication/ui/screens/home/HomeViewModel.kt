@@ -6,6 +6,7 @@ import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.AuthResult
 import com.example.myapplication.data.repository.FavoritesRepository
 import com.example.myapplication.data.repository.InterestedRepository
+import com.example.myapplication.data.repository.LocationRestriction
 import com.example.myapplication.data.repository.PropertyRepository
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -123,6 +124,23 @@ class HomeViewModel(
             appliedFilters = HomeFilters(filters),
             appliedSearchAreas = searchAreas,
             locationRadiusKm = locationRadiusKm
+        )
+        loadProperties(reset = true)
+    }
+
+    fun applyFiltersWithPropertyType(
+        propertyType: String,
+        filters: Map<String, Any>,
+        searchAreas: List<HomeSearchArea>,
+        locationRadiusKm: Int,
+        locationRestriction: LocationRestriction? = null
+    ) {
+        _uiState.value = _uiState.value.copy(
+            selectedPropertyType = propertyType,
+            appliedFilters = HomeFilters(filters),
+            appliedSearchAreas = searchAreas,
+            locationRadiusKm = locationRadiusKm,
+            locationRestriction = locationRestriction
         )
         loadProperties(reset = true)
     }

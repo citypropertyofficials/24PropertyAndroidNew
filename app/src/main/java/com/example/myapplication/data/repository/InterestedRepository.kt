@@ -230,7 +230,8 @@ class InterestedRepositoryImpl(
                 userId = doc.getString(FirebaseConstants.FIELD_USER_ID) ?: "",
                 name = doc.getString(FirebaseConstants.FIELD_NAME) ?: "",
                 email = doc.getString(FirebaseConstants.FIELD_EMAIL) ?: "",
-                mobile = doc.getString(FirebaseConstants.FIELD_MOBILE) ?: ""
+                mobile = doc.getString(FirebaseConstants.FIELD_MOBILE) ?: "",
+                createdAt = doc.getTimestamp(FirebaseConstants.FIELD_CREATED_AT)
             )
         }
     }

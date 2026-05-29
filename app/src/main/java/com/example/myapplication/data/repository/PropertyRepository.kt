@@ -52,6 +52,9 @@ interface PropertyRepository {
     suspend fun getOwnerMobileNumber(ownerUid: String): String?
 
     suspend fun deleteProperty(propertyId: String, deletedBy: String)
+
+    /** Count all active properties (published + drafts) owned by a user. */
+    suspend fun getUserActivePropertyCount(userId: String): Int
 }
 
 data class PropertyPageResult(
@@ -336,6 +339,20 @@ class PropertyRepositoryImpl(
             interestedRepository.syncInterestedPropertySnapshots(propertyId)
         } catch (e: Exception) {
             Log.e(TAG, "Error cascading interested sync after delete for $propertyId", e)
+        }
+    }
+
+    override suspend fun getUserActivePropertyCount(userId: String): Int {
+        return try {
+            val snapshot = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES)
+                .whereEqualTo(FirebaseConstants.FIELD_OWNER, userId)
+                .whereEqualTo(FirebaseConstants.FIELD_IS_ACTIVE, true)
+                .get()
+                .await()
+            snapshot.size()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error counting active properties for user $userId", e)
+            0
         }
     }
 
