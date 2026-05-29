@@ -415,7 +415,8 @@ private fun LocationSearchField(
     context: Context,
     selectedAreas: List<HomeSearchArea>,
     onSelectedAreasChange: (List<HomeSearchArea>) -> Unit,
-    onOpenFilter: () -> Unit
+    onOpenFilter: () -> Unit,
+    locationRestriction: LocationRestriction? = null
 ) {
     val placesClient = rememberPlacesClient(context)
     val sessionToken = remember { AutocompleteSessionToken.newInstance() }
@@ -424,20 +425,43 @@ private fun LocationSearchField(
     var predictions by remember { mutableStateOf<List<AutocompletePrediction>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, locationRestriction) {
         if (query.length < 2 || placesClient == null) {
             predictions = emptyList()
             return@LaunchedEffect
         }
         delay(250)
         isSearching = true
+
+        // Append regional terms to bias Google Places toward the selected region.
+        var finalQuery = query.trim()
+        if (locationRestriction != null) {
+            val stateName = locationRestriction.stateName
+            val districtName = locationRestriction.districtName
+            val suffix = buildString {
+                if (districtName.isNotBlank()) append(", ").append(districtName)
+                if (stateName.isNotBlank()) append(", ").append(stateName)
+                append(", India")
+            }
+            finalQuery = "$finalQuery$suffix"
+        }
+
         predictions = runCatching {
-            val request = FindAutocompletePredictionsRequest.builder()
+            val requestBuilder = FindAutocompletePredictionsRequest.builder()
                 .setSessionToken(sessionToken)
                 .setCountries(listOf("IN"))
-                .setQuery(query)
-                .build()
+                .setQuery(finalQuery)
+            val request = requestBuilder.build()
             placesClient.findAutocompletePredictions(request).await().autocompletePredictions
+                .filter { prediction ->
+                    if (locationRestriction == null) return@filter true
+                    val text = prediction.getFullText(null).toString().lowercase()
+                    val stateName = locationRestriction.stateName
+                    val districtName = locationRestriction.districtName
+                    if (stateName.isNotBlank() && !text.contains(stateName.lowercase())) return@filter false
+                    if (districtName.isNotBlank() && !text.contains(districtName.lowercase())) return@filter false
+                    true
+                }
         }.getOrDefault(emptyList())
         isSearching = false
     }
@@ -562,6 +586,7 @@ private fun HomeFilterDialog(
     var draftDistrict by remember(initialLocationRestriction) {
         mutableStateOf(initialLocationRestriction?.districtName ?: "")
     }
+    var validationError by remember { mutableStateOf<String?>(null) }
     val districts = remember(draftState) {
         IndianLocations.getDistrictsForState(draftState)
     }
@@ -569,6 +594,9 @@ private fun HomeFilterDialog(
         if (draftDistrict.isNotBlank() && districts.isNotEmpty() && districts.none { it.equals(draftDistrict, ignoreCase = true) }) {
             draftDistrict = ""
         }
+    }
+    LaunchedEffect(draftState, draftDistrict, searchAreas) {
+        validationError = null
     }
 
     val filters = remember(draftPropertyType, priceRange) {
@@ -674,11 +702,19 @@ private fun HomeFilterDialog(
                     )
                 }
                 item {
+                    val restriction = if (draftState.isNotBlank()) {
+                        LocationRestriction(
+                            stateCode = IndianLocations.getStateByName(draftState)?.isoCode ?: "",
+                            stateName = draftState,
+                            districtName = draftDistrict
+                        )
+                    } else null
                     LocationSearchField(
                         context = context,
                         selectedAreas = searchAreas,
                         onSelectedAreasChange = { searchAreas = it },
-                        onOpenFilter = {}
+                        onOpenFilter = {},
+                        locationRestriction = restriction
                     )
                 }
                 if (searchAreas.isNotEmpty()) {
@@ -760,6 +796,15 @@ private fun HomeFilterDialog(
                     }
                 }
             }
+            if (validationError != null) {
+                Text(
+                    text = validationError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -773,6 +818,9 @@ private fun HomeFilterDialog(
                         )
                         searchAreas = emptyList()
                         radiusKm = 1
+                        draftState = ""
+                        draftDistrict = ""
+                        validationError = null
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp)
@@ -781,28 +829,32 @@ private fun HomeFilterDialog(
                 }
                 Button(
                     onClick = {
-                        val cleaned = buildMap<String, Any> {
-                            draftFilters.forEach { (key, value) ->
-                                when (value) {
-                                    is List<*> -> {
-                                        val list = (value as? List<String>)?.filter { it.isNotBlank() }
-                                        if (!list.isNullOrEmpty()) put(key, list)
+                        when {
+                            draftState.isBlank() -> validationError = "Please select a state"
+                            draftDistrict.isBlank() -> validationError = "Please select a district"
+                            searchAreas.isEmpty() -> validationError = "Please select at least one search area"
+                            else -> {
+                                val cleaned = buildMap<String, Any> {
+                                    draftFilters.forEach { (key, value) ->
+                                        when (value) {
+                                            is List<*> -> {
+                                                val list = (value as? List<String>)?.filter { it.isNotBlank() }
+                                                if (!list.isNullOrEmpty()) put(key, list)
+                                            }
+                                            is String -> if (value.isNotBlank()) put(key, value)
+                                            is Int -> put(key, value)
+                                            is Float -> put(key, value.toInt())
+                                        }
                                     }
-                                    is String -> if (value.isNotBlank()) put(key, value)
-                                    is Int -> put(key, value)
-                                    is Float -> put(key, value.toInt())
                                 }
+                                val locationRestriction = LocationRestriction(
+                                    stateCode = IndianLocations.getStateByName(draftState)?.isoCode ?: "",
+                                    stateName = draftState,
+                                    districtName = draftDistrict
+                                )
+                                onApply(draftPropertyType, cleaned, searchAreas, radiusKm, locationRestriction)
                             }
                         }
-                        val locationRestriction = if (draftState.isNotBlank()) {
-                            val state = IndianLocations.getStateByName(draftState)
-                            LocationRestriction(
-                                stateCode = state?.isoCode ?: "",
-                                stateName = draftState,
-                                districtName = draftDistrict
-                            )
-                        } else null
-                        onApply(draftPropertyType, cleaned, searchAreas, radiusKm, locationRestriction)
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
