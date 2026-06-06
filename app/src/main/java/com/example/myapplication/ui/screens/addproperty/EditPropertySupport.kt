@@ -307,7 +307,7 @@ internal fun buildLandPropertyPayload(
 ): Map<String, Any?> {
     val values = state.fieldValues
     val propertyName = values["propertyName"].orEmpty().trim()
-    val buildingName = values["propertyAddress"].orEmpty().trim()
+    val buildingName = propertyName
     val location = state.selectedLocation
     val structuredAddress = listOf(
         buildingName,

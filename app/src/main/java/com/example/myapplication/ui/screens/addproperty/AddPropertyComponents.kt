@@ -359,9 +359,10 @@ fun CheckboxChoiceField(
     options: List<Pair<String, String>>,
     onSelected: (String) -> Unit,
     required: Boolean = false,
-    error: String? = null
+    error: String? = null,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = if (required) "$label *" else label,
             style = MaterialTheme.typography.labelLarge,
@@ -771,6 +772,7 @@ fun PropertySectionCard(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             section.fields.forEach { field ->
                 if (!isFieldVisible(field, listingType, fieldValues)) return@forEach
+                if (field.id == "priceNegotiable" || field.id == "rentNegotiable") return@forEach
                 when (field.type) {
                     FormFieldType.TEXT -> AppTextField(
                         field.label,

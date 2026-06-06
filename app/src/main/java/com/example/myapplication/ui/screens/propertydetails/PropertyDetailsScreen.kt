@@ -75,6 +75,9 @@ import com.example.myapplication.data.model.Property
 import com.example.myapplication.ui.theme.PrimaryStart
 import org.koin.androidx.compose.koinViewModel
 
+private fun normalizeAmenityLabel(value: String): String =
+    if (value == "Gated Community") "Gated Security" else value
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PropertyDetailsScreen(
@@ -295,7 +298,7 @@ private fun PropertyDetailsContent(
                 if (property.amenities.isNotEmpty()) {
                     SectionCard {
                         SectionHeader(Icons.Filled.Check, "Amenities")
-                        val rows = property.amenities.chunked(2)
+                        val rows = property.amenities.map(::normalizeAmenityLabel).chunked(2)
                         rows.forEach { row ->
                             Row(Modifier.fillMaxWidth()) {
                                 row.forEach { amenity -> AmenityChip(amenity, Modifier.weight(1f)) }
@@ -358,7 +361,7 @@ private fun PropertyDetailsContent(
                     field("Land Type", property.landType)
                 ))
                 DetailSection("Location & Building", Icons.Filled.LocationOn, listOfNotNull(
-                    field("Building/Society", property.buildingName),
+                    field(if (property.propertyType == "industrial") "Property Name" else "Building/Society", property.buildingName),
                     field("Locality", property.locality),
                     field("Zone Type", property.zoneType),
                     field("Location Hub", property.locationHub)
@@ -412,7 +415,7 @@ private fun PropertyDetailsContent(
                     DetailSection("Land Features", Icons.Filled.LocationOn, listOfNotNull(
                         field("Area (Acres)", property.areaAcres, "acres"),
                         field("Plot Length", property.plotLength, "ft"),
-                        field("Plot Breadth", property.plotBreadth, "ft"),
+                        field("Plot Width", property.plotBreadth, "ft"),
                         field("Land Facing", property.landFacing),
                         field("Road Width", property.roadWidth, "ft"),
                         field("Land Status", property.landStatus)
@@ -426,6 +429,7 @@ private fun PropertyDetailsContent(
                     field("Service Lift", property.serviceLift)
                 ))
                 DetailSection("Lease & Financials", Icons.Filled.Star, listOfNotNull(
+                    field("Price Negotiable", property.priceNegotiable),
                     field("Rent Negotiable", property.rentNegotiable),
                     field("Security Deposit", property.securityDeposit),
                     field("Rent Increase", property.rentIncrease),

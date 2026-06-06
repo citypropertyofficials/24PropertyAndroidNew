@@ -128,6 +128,7 @@ data class Property(
     val roadFacing: String = "",
 
     // ── Lease & Financials ────────────────────────────────────────
+    val priceNegotiable: String = "",
     val rentNegotiable: String = "",
     val securityDeposit: String = "",
     val rentIncrease: String = "",

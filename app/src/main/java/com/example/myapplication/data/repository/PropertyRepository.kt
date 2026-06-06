@@ -779,6 +779,7 @@ class PropertyRepositoryImpl(
             roadFacing = str(data, FirebaseConstants.FIELD_ROAD_FACING),
 
             // Lease & Financials
+            priceNegotiable = str(data, FirebaseConstants.FIELD_PRICE_NEGOTIABLE),
             rentNegotiable = str(data, FirebaseConstants.FIELD_RENT_NEGOTIABLE),
             securityDeposit = str(data, FirebaseConstants.FIELD_SECURITY_DEPOSIT),
             rentIncrease = str(data, FirebaseConstants.FIELD_RENT_INCREASE),
