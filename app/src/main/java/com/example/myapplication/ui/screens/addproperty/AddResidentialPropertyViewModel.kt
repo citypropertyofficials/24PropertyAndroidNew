@@ -50,6 +50,9 @@ class AddResidentialPropertyViewModel(
     fun updateField(fieldId: String, value: String) {
         val nextValues = _uiState.value.fieldValues.toMutableMap()
         nextValues[fieldId] = value
+        if (fieldId == "showingAvailability" && value == ALL_DAY_AVAILABILITY) {
+            nextValues["showingDate"] = ""
+        }
         val nextErrors = _uiState.value.fieldErrors - fieldId
         _uiState.value = _uiState.value.copy(fieldValues = nextValues, fieldErrors = nextErrors)
     }
@@ -104,11 +107,11 @@ class AddResidentialPropertyViewModel(
         val currentState = _uiState.value
         if (currentState.isSavingDraft || currentState.isPublishing || currentState.isInitialLoading) return
 
-        val errors = if (isDraft) emptyMap() else validate(currentState)
+        val errors = validate(currentState)
         if (errors.isNotEmpty()) {
             _uiState.value = currentState.copy(fieldErrors = errors)
             viewModelScope.launch {
-                _events.emit(AddResidentialPropertyEvent.ShowMessage("Complete the required residential property fields."))
+                _events.emit(AddResidentialPropertyEvent.ShowMessage("Please complete the required fields before saving."))
             }
             return
         }

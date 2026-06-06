@@ -109,11 +109,11 @@ class AddLandPropertyViewModel(
         val currentState = _uiState.value
         if (currentState.isSavingDraft || currentState.isPublishing || currentState.isInitialLoading) return
 
-        val errors = if (isDraft) emptyMap() else validate(currentState)
+        val errors = validate(currentState)
         if (errors.isNotEmpty()) {
             _uiState.value = currentState.copy(fieldErrors = errors)
             viewModelScope.launch {
-                _events.emit(AddLandPropertyEvent.ShowMessage("Complete the required land property fields."))
+                _events.emit(AddLandPropertyEvent.ShowMessage("Please complete the required fields before saving."))
             }
             return
         }

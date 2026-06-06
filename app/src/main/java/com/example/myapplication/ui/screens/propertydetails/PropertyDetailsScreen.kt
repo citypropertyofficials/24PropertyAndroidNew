@@ -366,16 +366,27 @@ private fun PropertyDetailsContent(
                     field("Zone Type", property.zoneType),
                     field("Location Hub", property.locationHub)
                 ))
-                DetailSection("Status & Availability", Icons.Filled.Info, listOfNotNull(
+                val showingFields = listOfNotNull(
                     field("Possession Status", property.possessionStatus),
-                    field("Available From", property.availableFrom)
-                ))
+                    field("Available From", property.availableFrom),
+                    field("Availability Schedule", property.showingAvailability)
+                )
+                val splitShowingFields = mutableListOf<Pair<String, String>>()
+                val hasSplit = property.showingDate.isNotBlank() || property.showingStartTime.isNotBlank() || property.showingEndTime.isNotBlank()
+                if (hasSplit) {
+                    if (property.showingDate.isNotBlank()) splitShowingFields += field("Property Showing Date", property.showingDate)!!
+                    if (property.showingStartTime.isNotBlank()) splitShowingFields += field("Start Time", property.showingStartTime)!!
+                    if (property.showingEndTime.isNotBlank()) splitShowingFields += field("End Time", property.showingEndTime)!!
+                } else if (property.showingDateTime.isNotBlank()) {
+                    splitShowingFields += field("Property Showing Date & Time", property.showingDateTime)!!
+                }
+                DetailSection("Status & Availability", Icons.Filled.Info, showingFields + splitShowingFields)
                 DetailSection("Property & Legal", Icons.Filled.Star, listOfNotNull(
                     field("Property Condition", property.propertyCondition),
                     field("Ownership", property.ownership),
-                    field("Plot Area", property.plotArea, "sq ft"),
-                    field("Built-up Area", property.builtUpArea, "sq ft"),
-                    field("Carpet Area", property.carpetArea, "sq ft"),
+                    field("Plot Area", property.plotArea, property.plotAreaUnit.ifBlank { "sq ft" }),
+                    field("Built-up Area", property.builtUpArea, property.builtUpAreaUnit.ifBlank { "sq ft" }),
+                    field("Carpet Area", property.carpetArea, property.carpetAreaUnit.ifBlank { "sq ft" }),
                     field("Total Construction", property.totalConstructionArea, "sq ft"),
                     field("Frontage", property.frontage, "ft"),
                     field("Road Access", property.roadAccess, "ft")
@@ -406,6 +417,8 @@ private fun PropertyDetailsContent(
                         field("Shed Height", property.shedHeight, "ft"),
                         field("Side Wall Height", property.shedSideWallHeight, "ft"),
                         field("Plot Dimensions", property.plotDimensions),
+                        field("Built-up Area (Shed)", property.shedBuiltUpArea, property.shedBuiltUpAreaUnit.ifBlank { "sq ft" }),
+                        field("Built-up Construction Area", property.builtUpConstructionArea, property.builtUpConstructionAreaUnit.ifBlank { "sq ft" }),
                         field("Electricity Load", property.electricityLoad),
                         field("Water Available", property.waterAvailable)
                     ))

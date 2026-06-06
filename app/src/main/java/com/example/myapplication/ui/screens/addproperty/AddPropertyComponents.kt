@@ -311,6 +311,282 @@ fun DateTimePickerField(
     }
 }
 
+@Composable
+fun DatePickerField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    required: Boolean = false,
+    error: String? = null,
+    enabled: Boolean = true
+) {
+    val context = LocalContext.current
+    val formatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+    val displayFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.US) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = if (required) "$label *" else label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (enabled) TextPrimary else TextSecondary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Box {
+            val displayValue = if (value.isBlank()) {
+                "Select $label"
+            } else {
+                runCatching { displayFormatter.format(formatter.parse(value)!!) }.getOrDefault(value)
+            }
+            OutlinedTextField(
+                value = displayValue,
+                onValueChange = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = enabled) {
+                        showDatePicker(context, value, formatter, onValueChange)
+                    },
+                readOnly = true,
+                enabled = false,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = if (error != null) MaterialTheme.colorScheme.error else BorderColor,
+                    disabledTextColor = if (value.isBlank() || !enabled) TextSecondary else TextPrimary,
+                    disabledContainerColor = if (enabled) Color.White else Color(0xFFF5F5F5)
+                ),
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = if (error != null) MaterialTheme.colorScheme.error else if (enabled) TextSecondary else TextSecondary.copy(alpha = 0.5f)
+                    )
+                },
+                isError = error != null
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .matchParentSize()
+                    .clickable(enabled = enabled) {
+                        showDatePicker(context, value, formatter, onValueChange)
+                    }
+            )
+        }
+        if (error != null) {
+            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    }
+}
+
+fun showDatePicker(
+    context: Context,
+    currentValue: String,
+    formatter: SimpleDateFormat,
+    onValueSelected: (String) -> Unit
+) {
+    val calendar = Calendar.getInstance()
+    runCatching { formatter.parse(currentValue) }.getOrNull()?.let { parsed ->
+        calendar.time = parsed
+    }
+    android.app.DatePickerDialog(
+        context,
+        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+            val pickedCalendar = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+                set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            }
+            onValueSelected(formatter.format(pickedCalendar.time))
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    ).show()
+}
+
+@Composable
+fun TimePickerField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    required: Boolean = false,
+    error: String? = null,
+    enabled: Boolean = true
+) {
+    val context = LocalContext.current
+    val formatter = remember { SimpleDateFormat("HH:mm", Locale.US) }
+    val displayFormatter = remember { SimpleDateFormat("hh:mm a", Locale.US) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = if (required) "$label *" else label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (enabled) TextPrimary else TextSecondary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Box {
+            val displayValue = if (value.isBlank()) {
+                "Select $label"
+            } else {
+                runCatching { displayFormatter.format(formatter.parse(value)!!) }.getOrDefault(value)
+            }
+            OutlinedTextField(
+                value = displayValue,
+                onValueChange = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = enabled) {
+                        showTimePicker(context, value, formatter, onValueChange)
+                    },
+                readOnly = true,
+                enabled = false,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = if (error != null) MaterialTheme.colorScheme.error else BorderColor,
+                    disabledTextColor = if (value.isBlank() || !enabled) TextSecondary else TextPrimary,
+                    disabledContainerColor = if (enabled) Color.White else Color(0xFFF5F5F5)
+                ),
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = if (error != null) MaterialTheme.colorScheme.error else if (enabled) TextSecondary else TextSecondary.copy(alpha = 0.5f)
+                    )
+                },
+                isError = error != null
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .matchParentSize()
+                    .clickable(enabled = enabled) {
+                        showTimePicker(context, value, formatter, onValueChange)
+                    }
+            )
+        }
+        if (error != null) {
+            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    }
+}
+
+fun showTimePicker(
+    context: Context,
+    currentValue: String,
+    formatter: SimpleDateFormat,
+    onValueSelected: (String) -> Unit
+) {
+    val calendar = Calendar.getInstance()
+    runCatching { formatter.parse(currentValue) }.getOrNull()?.let { parsed ->
+        calendar.time = parsed
+    }
+    android.app.TimePickerDialog(
+        context,
+        { _: TimePicker, hourOfDay: Int, minute: Int ->
+            val pickedCalendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, hourOfDay)
+                set(Calendar.MINUTE, minute)
+            }
+            onValueSelected(formatter.format(pickedCalendar.time))
+        },
+        calendar.get(Calendar.HOUR_OF_DAY),
+        calendar.get(Calendar.MINUTE),
+        false
+    ).show()
+}
+
+@Composable
+fun MeasureField(
+    label: String,
+    value: String,
+    unitValue: String,
+    unitOptions: List<String>,
+    onValueChange: (String) -> Unit,
+    onUnitChange: (String) -> Unit,
+    placeholder: String = "",
+    required: Boolean = false,
+    error: String? = null,
+    enabled: Boolean = true
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = if (required) "$label *" else label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (enabled) TextPrimary else TextSecondary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.weight(1.5f),
+                placeholder = if (placeholder.isBlank()) null else ({ Text(placeholder, color = TextSecondary.copy(alpha = 0.6f)) }),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                enabled = enabled,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryStart,
+                    focusedLabelColor = PrimaryStart,
+                    unfocusedBorderColor = BorderColor,
+                    disabledBorderColor = BorderColor,
+                    disabledTextColor = if (enabled) TextPrimary else TextSecondary,
+                    disabledContainerColor = if (enabled) Color.White else Color(0xFFF5F5F5)
+                ),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+            )
+            var expanded by rememberSaveable { mutableStateOf(false) }
+            Box(modifier = Modifier.weight(1f)) {
+                OutlinedTextField(
+                    value = unitValue.ifBlank { "Unit" },
+                    onValueChange = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = enabled) { expanded = true },
+                    readOnly = true,
+                    enabled = false,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledBorderColor = BorderColor,
+                        disabledTextColor = if (unitValue.isBlank() || !enabled) TextSecondary else TextPrimary,
+                        disabledContainerColor = if (enabled) Color.White else Color(0xFFF5F5F5)
+                    ),
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = if (enabled) TextSecondary else TextSecondary.copy(alpha = 0.5f)
+                        )
+                    }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .matchParentSize()
+                        .clickable(enabled = enabled) { expanded = true }
+                )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(Color.White),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    unitOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                onUnitChange(option)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        if (error != null) {
+            Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    }
+}
+
 fun showDateTimePicker(
     context: Context,
     currentValue: String,
@@ -773,6 +1049,7 @@ fun PropertySectionCard(
             section.fields.forEach { field ->
                 if (!isFieldVisible(field, listingType, fieldValues)) return@forEach
                 if (field.id == "priceNegotiable" || field.id == "rentNegotiable") return@forEach
+                val disabled = isFieldDisabled(field, fieldValues)
                 when (field.type) {
                     FormFieldType.TEXT -> AppTextField(
                         field.label,
@@ -797,7 +1074,7 @@ fun PropertySectionCard(
                                 label = field.label,
                                 selectedValue = fieldValues[field.id].orEmpty(),
                                 options = field.options.map { it to it },
-                                onSelected = { onValueChange(field.id, it) },
+                                onSelected = { if (!disabled) onValueChange(field.id, it) },
                                 required = field.required,
                                 error = fieldErrors[field.id]
                             )
@@ -806,7 +1083,7 @@ fun PropertySectionCard(
                                 field.label,
                                 fieldValues[field.id].orEmpty(),
                                 field.options,
-                                { onValueChange(field.id, it) },
+                                { if (!disabled) onValueChange(field.id, it) },
                                 required = field.required,
                                 error = fieldErrors[field.id]
                             )
@@ -816,7 +1093,7 @@ fun PropertySectionCard(
                         label = field.label,
                         selectedValue = fieldValues[field.id].orEmpty(),
                         options = field.options.map { it to it },
-                        onSelected = { onValueChange(field.id, it) },
+                        onSelected = { if (!disabled) onValueChange(field.id, it) },
                         required = field.required,
                         error = fieldErrors[field.id]
                     )
@@ -826,6 +1103,34 @@ fun PropertySectionCard(
                         onValueChange = { onValueChange(field.id, it) },
                         required = field.required,
                         error = fieldErrors[field.id]
+                    )
+                    FormFieldType.DATE -> DatePickerField(
+                        label = field.label,
+                        value = fieldValues[field.id].orEmpty(),
+                        onValueChange = { onValueChange(field.id, it) },
+                        required = field.required,
+                        error = fieldErrors[field.id],
+                        enabled = !disabled
+                    )
+                    FormFieldType.TIME -> TimePickerField(
+                        label = field.label,
+                        value = fieldValues[field.id].orEmpty(),
+                        onValueChange = { onValueChange(field.id, it) },
+                        required = field.required,
+                        error = fieldErrors[field.id],
+                        enabled = !disabled
+                    )
+                    FormFieldType.MEASURE -> MeasureField(
+                        label = field.label,
+                        value = fieldValues[field.id].orEmpty(),
+                        unitValue = fieldValues[field.unitField].orEmpty(),
+                        unitOptions = field.unitOptions,
+                        onValueChange = { onValueChange(field.id, it) },
+                        onUnitChange = { field.unitField?.let { unitId -> onValueChange(unitId, it) } },
+                        placeholder = field.placeholder,
+                        required = field.required,
+                        error = fieldErrors[field.id],
+                        enabled = !disabled
                     )
                     FormFieldType.AMENITY -> Unit
                 }

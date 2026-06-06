@@ -62,7 +62,53 @@ internal fun Map<String, Any?>.baseFieldValues(defaults: Map<String, String>): M
     values[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(
         this[FirebaseConstants.FIELD_POSSESSION_STATUS].asString()
     )
+
+    // Backward-compatible split showing fields prefill
+    val showingDate = this[FirebaseConstants.FIELD_SHOWING_DATE].asString()
+    val showingStartTime = this[FirebaseConstants.FIELD_SHOWING_START_TIME].asString()
+    val showingEndTime = this[FirebaseConstants.FIELD_SHOWING_END_TIME].asString()
+    val legacyDateTime = this[FirebaseConstants.FIELD_SHOWING_DATE_TIME].asString()
+    if (showingDate.isNotBlank()) {
+        values["showingDate"] = showingDate
+    } else if (legacyDateTime.isNotBlank()) {
+        val split = splitLegacyShowingDateTime(legacyDateTime)
+        if (split.showingDate.isNotBlank()) values["showingDate"] = split.showingDate
+        if (split.showingStartTime.isNotBlank()) values["showingStartTime"] = split.showingStartTime
+    }
+    if (showingStartTime.isNotBlank()) values["showingStartTime"] = showingStartTime
+    else if (legacyDateTime.isNotBlank()) {
+        val split = splitLegacyShowingDateTime(legacyDateTime)
+        if (split.showingStartTime.isNotBlank()) values["showingStartTime"] = split.showingStartTime
+    }
+    if (showingEndTime.isNotBlank()) values["showingEndTime"] = showingEndTime
+    values["showingAvailability"] = this[FirebaseConstants.FIELD_SHOWING_AVAILABILITY].asString()
+
     return values
+}
+
+internal data class SplitShowingDateTime(
+    val showingDate: String = "",
+    val showingStartTime: String = ""
+)
+
+internal fun splitLegacyShowingDateTime(dateTime: String): SplitShowingDateTime {
+    if (dateTime.isBlank()) return SplitShowingDateTime()
+    val parts = dateTime.split("T")
+    return if (parts.size == 2) {
+        SplitShowingDateTime(showingDate = parts[0], showingStartTime = parts[1])
+    } else {
+        SplitShowingDateTime()
+    }
+}
+
+internal fun buildLegacyShowingDateTime(showingDate: String, showingStartTime: String): String {
+    return if (showingDate.isNotBlank() && showingStartTime.isNotBlank()) {
+        "${showingDate}T${showingStartTime}"
+    } else if (showingDate.isNotBlank()) {
+        "${showingDate}T00:00"
+    } else {
+        ""
+    }
 }
 
 internal fun buildImageList(
@@ -106,6 +152,10 @@ internal fun buildResidentialPropertyPayload(
         .mapValues { (_, value) -> value.trim() }
         .toMutableMap<String, Any?>()
     dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(values["possessionStatus"].orEmpty())
+    dynamicValues[FirebaseConstants.FIELD_SHOWING_DATE_TIME] = buildLegacyShowingDateTime(
+        values["showingDate"].orEmpty(),
+        values["showingStartTime"].orEmpty()
+    )
 
     val payload = mutableMapOf<String, Any?>(
         FirebaseConstants.FIELD_NAME to if (buildingName.isBlank()) "Untitled Property" else buildingName,
@@ -184,6 +234,10 @@ internal fun buildCommercialPropertyPayload(
     if (values["possessionStatus"].orEmpty().isNotBlank()) {
         dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(values["possessionStatus"].orEmpty())
     }
+    dynamicValues[FirebaseConstants.FIELD_SHOWING_DATE_TIME] = buildLegacyShowingDateTime(
+        values["showingDate"].orEmpty(),
+        values["showingStartTime"].orEmpty()
+    )
 
     val payload = mutableMapOf<String, Any?>(
         FirebaseConstants.FIELD_NAME to if (buildingName.isBlank()) "Untitled Commercial Property" else buildingName,
@@ -260,6 +314,10 @@ internal fun buildIndustrialPropertyPayload(
     if (values["possessionStatus"].orEmpty().isNotBlank()) {
         dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(values["possessionStatus"].orEmpty())
     }
+    dynamicValues[FirebaseConstants.FIELD_SHOWING_DATE_TIME] = buildLegacyShowingDateTime(
+        values["showingDate"].orEmpty(),
+        values["showingStartTime"].orEmpty()
+    )
 
     val payload = mutableMapOf<String, Any?>(
         FirebaseConstants.FIELD_NAME to if (buildingName.isBlank()) "Untitled Industrial Property" else buildingName,
