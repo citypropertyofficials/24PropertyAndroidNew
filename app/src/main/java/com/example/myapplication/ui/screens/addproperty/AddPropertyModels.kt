@@ -11,12 +11,18 @@ const val LISTING_TYPE_RENT = "rent"
 const val LISTING_TYPE_SALE = "sale"
 const val MAX_PROPERTY_IMAGES = 8
 
+val SHOWING_AVAILABILITY_OPTIONS = listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Available all day")
+const val ALL_DAY_AVAILABILITY = "Available all day"
+
 enum class FormFieldType {
     TEXT,
     NUMBER,
     SELECT,
     RADIO,
     DATETIME,
+    DATE,
+    TIME,
+    MEASURE,
     AMENITY
 }
 
@@ -34,7 +40,11 @@ data class PropertyFieldDefinition(
     val required: Boolean = false,
     val listingTypes: Set<String> = emptySet(),
     val visibleWhen: FieldVisibilityRule? = null,
-    val defaultValue: String = ""
+    val disabledWhen: FieldVisibilityRule? = null,
+    val defaultValue: String = "",
+    val unitField: String? = null,
+    val unitOptions: List<String> = emptyList(),
+    val defaultUnit: String = ""
 )
 
 data class PropertyFormSection(
@@ -151,6 +161,7 @@ val residentialSections = listOf(
         title = "Type & Category",
         fields = listOf(
             PropertyFieldDefinition("residentialType", "Residential Type", FormFieldType.SELECT, listOf("Flat", "Individual House", "Villa", "Bungalow", "Farmhouse", "Studio", "Apartment", "Duplex", "Penthouse", "PG/Hostel"), defaultValue = "Flat"),
+            PropertyFieldDefinition("plotArea", "Plot Area", FormFieldType.MEASURE, placeholder = "e.g., 2400", visibleWhen = FieldVisibilityRule("residentialType", villaTypes), unitField = "plotAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
             PropertyFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Self owned", "On lease"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Self owned")
         )
     ),
@@ -159,10 +170,8 @@ val residentialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("bhkConfig", "BHK Configuration", FormFieldType.SELECT, listOf("1 BHK", "1.5 BHK", "2 BHK", "2.5 BHK", "3 BHK", "3.5 BHK", "4 BHK", "5 BHK+", "4+ BHK"), required = true, defaultValue = "2 BHK"),
             PropertyFieldDefinition("possessionStatus", "Property Status", FormFieldType.SELECT, listOf("Ready Possession", "Under Construction"), required = true),
-            PropertyFieldDefinition("builtUpArea", "Built Up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 1200", required = true),
-            PropertyFieldDefinition("builtUpAreaUnit", "Built Up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 1000"),
-            PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("builtUpArea", "Built Up Area", FormFieldType.MEASURE, placeholder = "e.g., 1200", required = true, unitField = "builtUpAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
+            PropertyFieldDefinition("carpetArea", "Carpet Area", FormFieldType.MEASURE, placeholder = "e.g., 1000", unitField = "carpetAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
             PropertyFieldDefinition("propertyAge", "Age of Property", FormFieldType.SELECT, listOf("Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"), defaultValue = "Less than 1 year"),
             PropertyFieldDefinition("totalFloors", "Total Floors in Building", FormFieldType.SELECT, listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10-20", "20+"), defaultValue = "5"),
             PropertyFieldDefinition("floorNumber", "Floor Number", FormFieldType.SELECT, listOf("Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor", "7th Floor", "8th Floor", "9th Floor", "10th Floor", "11+ Floor"), defaultValue = "Ground Floor"),
@@ -191,8 +200,10 @@ val residentialSections = listOf(
             PropertyFieldDefinition("maintenanceAmount", "Monthly Maintenance Amount (₹)", FormFieldType.NUMBER, placeholder = "e.g., 2500"),
             PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
             PropertyFieldDefinition("propertyShower", "Who Will Show This Property", FormFieldType.SELECT, listOf("Need help", "I will show", "Neighbours", "Friend", "Relative", "Security", "Tenants", "Other")),
-            PropertyFieldDefinition("showingDateTime", "Availability Date & Time", FormFieldType.DATETIME),
-            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day")),
+            PropertyFieldDefinition("showingDate", "Availability Date", FormFieldType.DATE, disabledWhen = FieldVisibilityRule("showingAvailability", setOf(ALL_DAY_AVAILABILITY))),
+            PropertyFieldDefinition("showingStartTime", "Start Time", FormFieldType.TIME),
+            PropertyFieldDefinition("showingEndTime", "End Time", FormFieldType.TIME),
+            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, SHOWING_AVAILABILITY_OPTIONS),
             PropertyFieldDefinition("currentSituation", "Current Situation of Property", FormFieldType.SELECT, listOf("Vacant", "Tenant", "Self occupied", "Sell urgent", "Not finding tenant"))
         )
     ),
@@ -211,7 +222,7 @@ val residentialSections = listOf(
             PropertyFieldDefinition("possessionLetter", "Possession Letter", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
             PropertyFieldDefinition("saleDeed", "Sale Deed", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
             PropertyFieldDefinition("propertyTaxPaid", "Property Tax Paid", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            PropertyFieldDefinition("societyFormation", "Society Formation / Apartment", FormFieldType.TEXT, placeholder = "e.g., Formed Society", listingTypes = setOf(LISTING_TYPE_SALE))
+            PropertyFieldDefinition("societyFormation", "Formation", FormFieldType.SELECT, listOf("Society", "Apartment"), listingTypes = setOf(LISTING_TYPE_SALE))
         )
     ),
     PropertyFormSection(
@@ -219,8 +230,6 @@ val residentialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("servantRoom", "Servant Room Available", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
             PropertyFieldDefinition("facing", "Property Facing", FormFieldType.SELECT, listOf("Don't Know", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"), defaultValue = "Don't Know"),
-            PropertyFieldDefinition("plotArea", "Plot Area", FormFieldType.NUMBER, placeholder = "e.g., 2400", visibleWhen = FieldVisibilityRule("residentialType", villaTypes)),
-            PropertyFieldDefinition("plotAreaUnit", "Plot Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), visibleWhen = FieldVisibilityRule("residentialType", villaTypes), defaultValue = "sq ft"),
             PropertyFieldDefinition("plotLength", "Plot Length (ft)", FormFieldType.NUMBER, placeholder = "e.g., 40", visibleWhen = FieldVisibilityRule("residentialType", villaTypes)),
             PropertyFieldDefinition("plotWidth", "Plot Width (ft)", FormFieldType.NUMBER, placeholder = "e.g., 60", visibleWhen = FieldVisibilityRule("residentialType", villaTypes))
         )
@@ -264,8 +273,10 @@ val commercialSections = listOf(
             PropertyFieldDefinition("currentSituation", "Current Situation of Property", FormFieldType.SELECT, listOf("Vacant", "Rental", "Self occupied", "Sell urgent")),
             PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
             PropertyFieldDefinition("currentBusiness", "Current Business Running", FormFieldType.SELECT, listOf("Office", "Restaurant", "Cafe", "Salon", "Spa", "Store", "Showroom", "ATM", "Other")),
-            PropertyFieldDefinition("showingDateTime", "Property Showing Date & Time", FormFieldType.DATETIME),
-            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day"))
+            PropertyFieldDefinition("showingDate", "Property Showing Date", FormFieldType.DATE, disabledWhen = FieldVisibilityRule("showingAvailability", setOf(ALL_DAY_AVAILABILITY))),
+            PropertyFieldDefinition("showingStartTime", "Start Time", FormFieldType.TIME),
+            PropertyFieldDefinition("showingEndTime", "End Time", FormFieldType.TIME),
+            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, SHOWING_AVAILABILITY_OPTIONS)
         )
     ),
     PropertyFormSection(
@@ -273,11 +284,9 @@ val commercialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("propertyCondition", "Property Condition", FormFieldType.SELECT, listOf("Ready to Use", "Bare Shell"), defaultValue = "Ready to Use"),
             PropertyFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Freehold", "Leasehold", "Cooperative Society", "Power of Attorney"), defaultValue = "Leasehold"),
-            PropertyFieldDefinition("plotArea", "Plot Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 5000"),
-            PropertyFieldDefinition("builtUpArea", "Built-up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 3000", required = true),
-            PropertyFieldDefinition("builtUpAreaUnit", "Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 2500"),
-            PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("plotArea", "Plot Area", FormFieldType.MEASURE, placeholder = "e.g., 5000", unitField = "plotAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
+            PropertyFieldDefinition("builtUpArea", "Built-up Area", FormFieldType.MEASURE, placeholder = "e.g., 3000", required = true, unitField = "builtUpAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
+            PropertyFieldDefinition("carpetArea", "Carpet Area", FormFieldType.MEASURE, placeholder = "e.g., 2500", unitField = "carpetAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
             PropertyFieldDefinition("propertyAge", "Age of Property", FormFieldType.SELECT, listOf("Less than 1 year", "1-3 years", "3-5 years", "5-10 years", "More than 10 years"), defaultValue = "Less than 1 year"),
             PropertyFieldDefinition("totalConstructionArea", "Total Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 3500"),
             PropertyFieldDefinition("frontage", "Frontage (ft)", FormFieldType.NUMBER, placeholder = "e.g., 50"),
@@ -342,7 +351,7 @@ val commercialSections = listOf(
             PropertyFieldDefinition("possessionLetter", "Possession Letter", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
             PropertyFieldDefinition("saleDeed", "Sale Deed", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
             PropertyFieldDefinition("propertyTaxPaid", "Property Tax Paid", FormFieldType.SELECT, listOf("Yes", "No", "Don't know"), listingTypes = setOf(LISTING_TYPE_SALE)),
-            PropertyFieldDefinition("societyFormation", "Society Formation / Apartment", FormFieldType.TEXT, placeholder = "e.g., Formed Society", listingTypes = setOf(LISTING_TYPE_SALE))
+            PropertyFieldDefinition("societyFormation", "Formation", FormFieldType.SELECT, listOf("Society", "Apartment"), listingTypes = setOf(LISTING_TYPE_SALE))
         )
     )
 )
@@ -359,6 +368,9 @@ fun defaultResidentialFieldValues(): Map<String, String> {
     )
     residentialSections.flatMap { it.fields }.forEach { field ->
         base[field.id] = field.defaultValue
+        if (field.type == FormFieldType.MEASURE && field.unitField != null) {
+            base[field.unitField] = field.defaultUnit
+        }
     }
     return base
 }
@@ -375,6 +387,9 @@ fun defaultCommercialFieldValues(): Map<String, String> {
     )
     commercialSections.flatMap { it.fields }.forEach { field ->
         base[field.id] = field.defaultValue
+        if (field.type == FormFieldType.MEASURE && field.unitField != null) {
+            base[field.unitField] = field.defaultUnit
+        }
     }
     return base
 }
@@ -400,8 +415,10 @@ val industrialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("possessionStatus", "Possession Status", FormFieldType.SELECT, listOf("Ready to Move", "Under Construction"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Ready to Move"),
             PropertyFieldDefinition("availableFrom", "Available From", FormFieldType.SELECT, listOf("Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Immediate"),
-            PropertyFieldDefinition("showingDateTime", "Property Showing Date & Time", FormFieldType.DATETIME),
-            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, listOf("Weekday (Mon-Fri)", "Weekend (Sat-Sun)", "Every day (Mon-Sun)", "Available all day"))
+            PropertyFieldDefinition("showingDate", "Property Showing Date", FormFieldType.DATE, disabledWhen = FieldVisibilityRule("showingAvailability", setOf(ALL_DAY_AVAILABILITY))),
+            PropertyFieldDefinition("showingStartTime", "Start Time", FormFieldType.TIME),
+            PropertyFieldDefinition("showingEndTime", "End Time", FormFieldType.TIME),
+            PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, SHOWING_AVAILABILITY_OPTIONS)
         )
     ),
     PropertyFormSection(
@@ -409,14 +426,11 @@ val industrialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("propertyCondition", "Property Condition", FormFieldType.SELECT, listOf("Ready to Use", "Bare Shell"), defaultValue = "Ready to Use"),
             PropertyFieldDefinition("ownership", "Ownership", FormFieldType.SELECT, listOf("Freehold", "Leasehold", "Cooperative Society", "Power of Attorney"), defaultValue = "Leasehold"),
-            PropertyFieldDefinition("plotArea", "Plot Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 10000", required = true),
-            PropertyFieldDefinition("plotAreaUnit", "Plot Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr", "Acre", "Hector"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("plotArea", "Plot Area", FormFieldType.MEASURE, placeholder = "e.g., 10000", required = true, unitField = "plotAreaUnit", unitOptions = listOf("sq ft", "sq mtr", "Acre", "Hector"), defaultUnit = "sq ft"),
             PropertyFieldDefinition("plotWidth", "Plot Width (ft)", FormFieldType.NUMBER, placeholder = "e.g., 100"),
             PropertyFieldDefinition("plotLength", "Plot Length (ft)", FormFieldType.NUMBER, placeholder = "e.g., 200"),
-            PropertyFieldDefinition("builtUpArea", "Built-up Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 8000"),
-            PropertyFieldDefinition("builtUpAreaUnit", "Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 7000"),
-            PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("builtUpArea", "Built-up Area", FormFieldType.MEASURE, placeholder = "e.g., 8000", unitField = "builtUpAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
+            PropertyFieldDefinition("carpetArea", "Carpet Area", FormFieldType.MEASURE, placeholder = "e.g., 7000", unitField = "carpetAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
             PropertyFieldDefinition("totalConstructionArea", "Total Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 9000", listingTypes = setOf(LISTING_TYPE_RENT)),
             PropertyFieldDefinition("frontage", "Frontage (ft)", FormFieldType.NUMBER, placeholder = "e.g., 100"),
             PropertyFieldDefinition("roadAccess", "Road Access (ft)", FormFieldType.NUMBER, placeholder = "e.g., 80", listingTypes = setOf(LISTING_TYPE_RENT))
@@ -428,10 +442,8 @@ val industrialSections = listOf(
             PropertyFieldDefinition("shedHeight", "Shed Height (ft)", FormFieldType.NUMBER, placeholder = "e.g., 20"),
             PropertyFieldDefinition("shedSideWallHeight", "Shed Side Wall Height (ft)", FormFieldType.NUMBER, placeholder = "e.g., 15"),
             PropertyFieldDefinition("plotDimensions", "Width, Length", FormFieldType.TEXT, placeholder = "e.g., 100 ft x 200 ft"),
-            PropertyFieldDefinition("shedBuiltUpArea", "Built-up Area (Shed) (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 5000"),
-            PropertyFieldDefinition("shedBuiltUpAreaUnit", "Shed Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            PropertyFieldDefinition("builtUpConstructionArea", "Built-up Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 6000"),
-            PropertyFieldDefinition("builtUpConstructionAreaUnit", "Built-up Construction Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
+            PropertyFieldDefinition("shedBuiltUpArea", "Built-up Area (Shed)", FormFieldType.MEASURE, placeholder = "e.g., 5000", unitField = "shedBuiltUpAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
+            PropertyFieldDefinition("builtUpConstructionArea", "Built-up Construction Area", FormFieldType.MEASURE, placeholder = "e.g., 6000", unitField = "builtUpConstructionAreaUnit", unitOptions = listOf("sq ft", "sq mtr"), defaultUnit = "sq ft"),
             PropertyFieldDefinition("electricityLoad", "Electricity Load", FormFieldType.SELECT, listOf("Up to 50 KW", "50-100 KW", "100-200 KW", "200-300 KW", "500+ KW"), defaultValue = "Up to 50 KW"),
             PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "MIDC", "Other")),
             PropertyFieldDefinition("plotLayout", "Plot Layout", FormFieldType.RADIO, listOf("Yes", "No"), defaultValue = "No"),
@@ -503,6 +515,9 @@ fun defaultIndustrialFieldValues(): Map<String, String> {
     )
     industrialSections.flatMap { it.fields }.forEach { field ->
         base[field.id] = field.defaultValue
+        if (field.type == FormFieldType.MEASURE && field.unitField != null) {
+            base[field.unitField] = field.defaultUnit
+        }
     }
     return base
 }
@@ -514,6 +529,14 @@ fun isFieldVisible(
 ): Boolean {
     if (field.listingTypes.isNotEmpty() && listingType !in field.listingTypes) return false
     val rule = field.visibleWhen ?: return true
+    return values[rule.fieldId].orEmpty() in rule.values
+}
+
+fun isFieldDisabled(
+    field: PropertyFieldDefinition,
+    values: Map<String, String>
+): Boolean {
+    val rule = field.disabledWhen ?: return false
     return values[rule.fieldId].orEmpty() in rule.values
 }
 

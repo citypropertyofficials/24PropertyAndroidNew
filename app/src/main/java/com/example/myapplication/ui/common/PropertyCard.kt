@@ -116,28 +116,43 @@ fun PropertyCard(
 
             // Content
             Column(modifier = Modifier.padding(16.dp)) {
-                // Property Name
-                Text(
-                    text = property.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Property Name + Price (same line)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = property.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = property.displayPrice,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = PrimaryStart
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Price
-                Text(
-                    text = property.displayPrice,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = PrimaryStart
-                )
+                // Landmark
+                if (property.landmark.isNotBlank()) {
+                    Text(
+                        text = property.landmark,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Location
+                // Location (city, state)
                 val locationText = buildString {
                     if (property.location.isNotBlank()) append(property.location)
                     if (property.cityState.isNotBlank()) {
@@ -146,6 +161,7 @@ fun PropertyCard(
                     }
                 }
                 if (locationText.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = locationText,
                         style = MaterialTheme.typography.bodySmall,
