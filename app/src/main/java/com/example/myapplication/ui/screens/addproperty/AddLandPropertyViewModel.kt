@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+private fun normalizeAmenityValue(amenity: String): String =
+    if (amenity == "Gated Community") "Gated Security" else amenity
+
 class AddLandPropertyViewModel(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
@@ -56,7 +59,9 @@ class AddLandPropertyViewModel(
 
     fun toggleAmenity(amenity: String, selected: Boolean) {
         val next = _uiState.value.amenities.toMutableSet()
-        if (selected) next.add(amenity) else next.remove(amenity)
+        val normalizedAmenity = normalizeAmenityValue(amenity)
+        next.remove("Gated Community")
+        if (selected) next.add(normalizedAmenity) else next.remove(normalizedAmenity)
         _uiState.value = _uiState.value.copy(amenities = next)
     }
 
@@ -207,7 +212,6 @@ class AddLandPropertyViewModel(
 
         requireValue("propertyName")
         requireValue("propertyPrice")
-        requireValue("propertyAddress")
         requireValue("state")
         requireValue("city")
         requireValue("nameStreetArea")
@@ -228,14 +232,14 @@ class AddLandPropertyViewModel(
                 val property = addPropertyRepository.getProperty(propertyId)
                     ?: error("Property not found.")
                 val fieldValues = property.baseFieldValues(defaultLandFieldValues()).apply {
-                    this["propertyAddress"] = property[FirebaseConstants.FIELD_BUILDING_NAME].asString()
                     this["propertyName"] = property[FirebaseConstants.FIELD_NAME].asString()
+                        .ifBlank { property[FirebaseConstants.FIELD_BUILDING_NAME].asString() }
                 }
                 val images = property[FirebaseConstants.FIELD_IMAGES].asStringList()
                 _uiState.value = AddLandPropertyUiState(
                     listingType = property[FirebaseConstants.FIELD_LISTING_TYPE].asString().ifBlank { LISTING_TYPE_RENT },
                     fieldValues = fieldValues,
-                    amenities = property[FirebaseConstants.FIELD_AMENITIES].asStringList().toSet(),
+                    amenities = property[FirebaseConstants.FIELD_AMENITIES].asStringList().map(::normalizeAmenityValue).toSet(),
                     propertyId = propertyId,
                     isEditMode = true,
                     isInitialLoading = false,

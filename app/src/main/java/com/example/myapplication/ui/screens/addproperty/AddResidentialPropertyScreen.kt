@@ -166,14 +166,26 @@ private fun BasicInfoSection(
             error = state.fieldErrors["propertyAddress"],
             required = true
         )
-        AppTextField(
-            label = "Monthly Rent / Sale Price (₹)",
-            value = state.fieldValues["propertyPrice"].orEmpty(),
-            onValueChange = { onValueChange("propertyPrice", it) },
-            isNumber = true,
-            error = state.fieldErrors["propertyPrice"],
-            required = true
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AppTextField(
+                label = if (state.listingType == LISTING_TYPE_RENT) "Monthly Rent (₹)" else "Sale Price (₹)",
+                value = state.fieldValues["propertyPrice"].orEmpty(),
+                onValueChange = { onValueChange("propertyPrice", it) },
+                isNumber = true,
+                error = state.fieldErrors["propertyPrice"],
+                required = true,
+                modifier = Modifier.weight(1f)
+            )
+            CheckboxChoiceField(
+                label = if (state.listingType == LISTING_TYPE_RENT) "Rent Negotiable" else "Price Negotiable",
+                selectedValue = state.fieldValues[if (state.listingType == LISTING_TYPE_RENT) "rentNegotiable" else "priceNegotiable"].orEmpty().ifBlank { "No" },
+                options = listOf("Yes" to "Yes", "No" to "No"),
+                onSelected = {
+                    onValueChange(if (state.listingType == LISTING_TYPE_RENT) "rentNegotiable" else "priceNegotiable", it)
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
         AppTextField(
             label = "Description",
             value = state.fieldValues["description"].orEmpty(),

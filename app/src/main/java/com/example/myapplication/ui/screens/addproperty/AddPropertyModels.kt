@@ -389,7 +389,7 @@ val industrialSections = listOf(
     PropertyFormSection(
         title = "Location & Building",
         fields = listOf(
-            PropertyFieldDefinition("buildingName", "Building/Project/Society/MIDC Name", FormFieldType.TEXT, placeholder = "e.g., MIDC Industrial Area"),
+            PropertyFieldDefinition("buildingName", "Property Name", FormFieldType.TEXT, placeholder = "e.g., MIDC Industrial Area"),
             PropertyFieldDefinition("locality", "Locality", FormFieldType.TEXT, placeholder = "e.g., Waluj MIDC"),
             PropertyFieldDefinition("zoneType", "Zone Type", FormFieldType.SELECT, listOf("Industrial", "R-zone", "Hill top", "Red zone", "Eco sensitive zone", "Agri zone", "MIDC", "Commercial", "Residential", "Special Economic", "Open Space", "Agricultural Zone", "Other"), defaultValue = "Industrial"),
             PropertyFieldDefinition("locationHub", "Location Hub", FormFieldType.SELECT, listOf("IT Park", "Business Park", "Other"), defaultValue = "Other")
@@ -417,9 +417,9 @@ val industrialSections = listOf(
             PropertyFieldDefinition("builtUpAreaUnit", "Built-up Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
             PropertyFieldDefinition("carpetArea", "Carpet Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 7000"),
             PropertyFieldDefinition("carpetAreaUnit", "Carpet Area Unit", FormFieldType.SELECT, listOf("sq ft", "sq mtr"), defaultValue = "sq ft"),
-            PropertyFieldDefinition("totalConstructionArea", "Total Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 9000"),
+            PropertyFieldDefinition("totalConstructionArea", "Total Construction Area (sq ft)", FormFieldType.NUMBER, placeholder = "e.g., 9000", listingTypes = setOf(LISTING_TYPE_RENT)),
             PropertyFieldDefinition("frontage", "Frontage (ft)", FormFieldType.NUMBER, placeholder = "e.g., 100"),
-            PropertyFieldDefinition("roadAccess", "Road Access (ft)", FormFieldType.NUMBER, placeholder = "e.g., 80")
+            PropertyFieldDefinition("roadAccess", "Road Access (ft)", FormFieldType.NUMBER, placeholder = "e.g., 80", listingTypes = setOf(LISTING_TYPE_RENT))
         )
     ),
     PropertyFormSection(
@@ -444,9 +444,9 @@ val industrialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("priceNegotiable", "Price Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "No"),
             PropertyFieldDefinition("rentNegotiable", "Is Rent Negotiable", FormFieldType.RADIO, listOf("Yes", "No"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "No"),
-            PropertyFieldDefinition("securityDeposit", "Security Deposit", FormFieldType.SELECT, listOf("1 month", "2 months", "3 months", "Custom amount"), defaultValue = "2 months"),
-            PropertyFieldDefinition("rentIncrease", "Expected Rent Increase", FormFieldType.SELECT, listOf("5% annually", "10% annually", "15% annually", "Custom", "No increase"), defaultValue = "10% annually"),
-            PropertyFieldDefinition("lockInPeriod", "Lock-in Period", FormFieldType.SELECT, listOf("None", "6 months", "1 year", "2 years", "Custom"), defaultValue = "1 year")
+            PropertyFieldDefinition("securityDeposit", "Security Deposit", FormFieldType.SELECT, listOf("1 month", "2 months", "3 months", "Custom amount"), defaultValue = "2 months", listingTypes = setOf(LISTING_TYPE_RENT)),
+            PropertyFieldDefinition("rentIncrease", "Expected Rent Increase", FormFieldType.SELECT, listOf("5% annually", "10% annually", "15% annually", "Custom", "No increase"), defaultValue = "10% annually", listingTypes = setOf(LISTING_TYPE_RENT)),
+            PropertyFieldDefinition("lockInPeriod", "Lock-in Period", FormFieldType.SELECT, listOf("None", "6 months", "1 year", "2 years", "Custom"), defaultValue = "1 year", listingTypes = setOf(LISTING_TYPE_RENT))
         )
     ),
     PropertyFormSection(
@@ -477,9 +477,9 @@ val industrialSections = listOf(
     PropertyFormSection(
         title = "Facing & Facilities",
         fields = listOf(
-            PropertyFieldDefinition("rearFacing", "Rear", FormFieldType.TEXT, placeholder = "e.g., Open Space"),
+            PropertyFieldDefinition("rearFacing", "Rear", FormFieldType.TEXT, placeholder = "e.g., Open Space", listingTypes = setOf(LISTING_TYPE_RENT)),
             PropertyFieldDefinition("facing", "Facing", FormFieldType.SELECT, listOf("Don't Know", "North", "East", "West", "South", "North-East", "North-West", "South-East", "South-West"), defaultValue = "Don't Know"),
-            PropertyFieldDefinition("roadFacing", "Road", FormFieldType.TEXT, placeholder = "e.g., Service Road")
+            PropertyFieldDefinition("roadFacing", "Road", FormFieldType.TEXT, placeholder = "e.g., Service Road", listingTypes = setOf(LISTING_TYPE_RENT))
         )
     ),
     PropertyFormSection(
@@ -547,7 +547,7 @@ val landAmenities = listOf(
     "Road Access",
     "Boundary Wall",
     "Corner Plot",
-    "Gated Community",
+    "Gated Security",
     "Park Facing",
     "Main Road Facing",
     "Metro Nearby",
@@ -620,7 +620,7 @@ val landSections = listOf(
             ),
             PropertyFieldDefinition(
                 "plotBreadth",
-                "Plot Breadth (ft)",
+                "Plot Width (ft)",
                 FormFieldType.NUMBER,
                 placeholder = "e.g., 50"
             ),
