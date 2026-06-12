@@ -50,9 +50,6 @@ class AddIndustrialPropertyViewModel(
     fun updateField(fieldId: String, value: String) {
         val nextValues = _uiState.value.fieldValues.toMutableMap()
         nextValues[fieldId] = value
-        if (fieldId == "showingAvailability" && value == ALL_DAY_AVAILABILITY) {
-            nextValues["showingDate"] = ""
-        }
         val nextErrors = _uiState.value.fieldErrors - fieldId
         _uiState.value = _uiState.value.copy(fieldValues = nextValues, fieldErrors = nextErrors)
     }

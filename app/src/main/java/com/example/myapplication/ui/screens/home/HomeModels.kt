@@ -57,7 +57,6 @@ data class HomeUiState(
 ) {
     val isLocationComplete: Boolean
         get() = !locationRestriction?.stateCode.isNullOrBlank()
-            && !locationRestriction?.districtName.isNullOrBlank()
             && appliedSearchAreas.isNotEmpty()
 }
 

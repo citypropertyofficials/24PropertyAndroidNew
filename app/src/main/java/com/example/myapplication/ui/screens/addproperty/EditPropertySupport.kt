@@ -64,17 +64,9 @@ internal fun Map<String, Any?>.baseFieldValues(defaults: Map<String, String>): M
     )
 
     // Backward-compatible split showing fields prefill
-    val showingDate = this[FirebaseConstants.FIELD_SHOWING_DATE].asString()
     val showingStartTime = this[FirebaseConstants.FIELD_SHOWING_START_TIME].asString()
     val showingEndTime = this[FirebaseConstants.FIELD_SHOWING_END_TIME].asString()
     val legacyDateTime = this[FirebaseConstants.FIELD_SHOWING_DATE_TIME].asString()
-    if (showingDate.isNotBlank()) {
-        values["showingDate"] = showingDate
-    } else if (legacyDateTime.isNotBlank()) {
-        val split = splitLegacyShowingDateTime(legacyDateTime)
-        if (split.showingDate.isNotBlank()) values["showingDate"] = split.showingDate
-        if (split.showingStartTime.isNotBlank()) values["showingStartTime"] = split.showingStartTime
-    }
     if (showingStartTime.isNotBlank()) values["showingStartTime"] = showingStartTime
     else if (legacyDateTime.isNotBlank()) {
         val split = splitLegacyShowingDateTime(legacyDateTime)
@@ -153,7 +145,7 @@ internal fun buildResidentialPropertyPayload(
         .toMutableMap<String, Any?>()
     dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(values["possessionStatus"].orEmpty())
     dynamicValues[FirebaseConstants.FIELD_SHOWING_DATE_TIME] = buildLegacyShowingDateTime(
-        values["showingDate"].orEmpty(),
+        "",
         values["showingStartTime"].orEmpty()
     )
 
@@ -235,7 +227,7 @@ internal fun buildCommercialPropertyPayload(
         dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(values["possessionStatus"].orEmpty())
     }
     dynamicValues[FirebaseConstants.FIELD_SHOWING_DATE_TIME] = buildLegacyShowingDateTime(
-        values["showingDate"].orEmpty(),
+        "",
         values["showingStartTime"].orEmpty()
     )
 
@@ -315,7 +307,7 @@ internal fun buildIndustrialPropertyPayload(
         dynamicValues[FirebaseConstants.FIELD_POSSESSION_STATUS] = normalizePossessionStatusForForm(values["possessionStatus"].orEmpty())
     }
     dynamicValues[FirebaseConstants.FIELD_SHOWING_DATE_TIME] = buildLegacyShowingDateTime(
-        values["showingDate"].orEmpty(),
+        "",
         values["showingStartTime"].orEmpty()
     )
 
