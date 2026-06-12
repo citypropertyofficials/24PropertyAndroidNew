@@ -198,9 +198,10 @@ class PropertyDetailsViewModel(
     }
 
     private fun buildShareMessage(property: Property): String {
+        val isBrokerProperty = property.ownerRole.lowercase() == "broker"
         return buildString {
             append("🏠 *${property.name}*\n")
-            if (property.displayLocation.isNotBlank()) append("📍 ${property.displayLocation}\n")
+            if (!isBrokerProperty && property.displayLocation.isNotBlank()) append("📍 ${property.displayLocation}\n")
             append("💰 ${property.displayPrice}\n")
             if (property.propertyType.isNotBlank()) append("🏢 ${property.propertyTypeDisplay}\n")
             append("\nShared via 24Property App")

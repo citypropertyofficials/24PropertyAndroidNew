@@ -243,8 +243,9 @@ private fun PropertyDetailsContent(
                 // Title & Price Row
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.Top) {
                     Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        val isBrokerProperty = property.ownerRole.lowercase() == "broker"
                         Text(property.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, lineHeight = 26.sp)
-                        if (property.displayLocation.isNotBlank()) {
+                        if (!isBrokerProperty && property.displayLocation.isNotBlank()) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                                 Icon(Icons.Filled.LocationOn, null, tint = PrimaryStart, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
