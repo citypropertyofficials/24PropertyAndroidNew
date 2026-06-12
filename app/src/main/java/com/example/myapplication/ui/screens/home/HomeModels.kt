@@ -54,7 +54,12 @@ data class HomeUiState(
     val appliedSearchAreas: List<HomeSearchArea> = emptyList(),
     val locationRadiusKm: Int = 1,
     val locationRestriction: LocationRestriction? = null
-)
+) {
+    val isLocationComplete: Boolean
+        get() = !locationRestriction?.stateCode.isNullOrBlank()
+            && !locationRestriction?.districtName.isNullOrBlank()
+            && appliedSearchAreas.isNotEmpty()
+}
 
 fun getHomePriceRange(propertyType: String, listingType: String): HomePriceRange {
     return when {

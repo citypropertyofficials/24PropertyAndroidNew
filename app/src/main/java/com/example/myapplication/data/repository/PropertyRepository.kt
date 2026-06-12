@@ -535,6 +535,11 @@ class PropertyRepositoryImpl(
             if (price == null || price > maxPrice) return false
         }
 
+        (filters["ownerRole"] as? String)?.takeIf { it.isNotBlank() }?.let { roleFilter ->
+            val propRole = str(property, FirebaseConstants.FIELD_OWNER_ROLE).ifBlank { "user" }.lowercase()
+            if (propRole != roleFilter.lowercase()) return false
+        }
+
         when (propertyType) {
             "residential" -> {
                 filterValues(filters["residentialType"])?.let { values ->

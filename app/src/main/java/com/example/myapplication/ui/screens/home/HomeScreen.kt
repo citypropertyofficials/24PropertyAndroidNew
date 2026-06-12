@@ -161,7 +161,9 @@ fun HomeScreen(
                                 )
                             },
                             onOpenFilter = { showFilterDialog = true },
-                            onClearFilters = viewModel::clearFilters
+                            onClearFilters = viewModel::clearFilters,
+                            onStateChange = viewModel::updateState,
+                            onDistrictChange = viewModel::updateDistrict
                         )
                     }
 
@@ -171,7 +173,11 @@ fun HomeScreen(
                         }
                     }
 
-                    if (uiState.properties.isEmpty() && uiState.errorMessage == null) {
+                    if (!uiState.isLocationComplete) {
+                        item {
+                            LocationGateBanner(uiState = uiState)
+                        }
+                    } else if (uiState.properties.isEmpty() && uiState.errorMessage == null) {
                         item {
                             EmptyPropertyContent(onRetry = viewModel::retry)
                         }
@@ -247,7 +253,9 @@ private fun HomeSearchShell(
     onPropertyTypeChange: (String) -> Unit,
     onAreasChanged: (List<HomeSearchArea>) -> Unit,
     onOpenFilter: () -> Unit,
-    onClearFilters: () -> Unit
+    onClearFilters: () -> Unit,
+    onStateChange: (String) -> Unit,
+    onDistrictChange: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -311,11 +319,33 @@ private fun HomeSearchShell(
             }
         }
 
+        val selectedState = state.locationRestriction?.stateName ?: ""
+        val selectedDistrict = state.locationRestriction?.districtName ?: ""
+        val districtOptions = remember(selectedState) {
+            IndianLocations.getDistrictsForState(selectedState)
+        }
+        DropdownField(
+            label = "State",
+            selectedValue = selectedState,
+            options = IndianLocations.allStateNames,
+            onSelected = onStateChange
+        )
+        DropdownField(
+            label = "District",
+            selectedValue = selectedDistrict,
+            options = if (districtOptions.isEmpty()) listOf("Select State First") else districtOptions,
+            onSelected = { if (districtOptions.isNotEmpty()) onDistrictChange(it) }
+        )
         LocationSearchField(
             context = context,
             selectedAreas = state.appliedSearchAreas,
             onSelectedAreasChange = onAreasChanged,
-            onOpenFilter = onOpenFilter
+            onOpenFilter = onOpenFilter,
+            locationRestriction = if (selectedState.isNotBlank()) LocationRestriction(
+                stateCode = IndianLocations.getStateByName(selectedState)?.isoCode ?: "",
+                stateName = selectedState,
+                districtName = selectedDistrict
+            ) else null
         )
 
         if (!state.appliedFilters.isEmpty()) {
@@ -580,25 +610,6 @@ private fun HomeFilterDialog(
     var searchAreas by remember(initialSearchAreas) { mutableStateOf(initialSearchAreas) }
     var radiusKm by remember(initialLocationRadius) { mutableStateOf(initialLocationRadius) }
 
-    var draftState by remember(initialLocationRestriction) {
-        mutableStateOf(initialLocationRestriction?.stateName ?: "")
-    }
-    var draftDistrict by remember(initialLocationRestriction) {
-        mutableStateOf(initialLocationRestriction?.districtName ?: "")
-    }
-    var validationError by remember { mutableStateOf<String?>(null) }
-    val districts = remember(draftState) {
-        IndianLocations.getDistrictsForState(draftState)
-    }
-    LaunchedEffect(districts, draftDistrict) {
-        if (draftDistrict.isNotBlank() && districts.isNotEmpty() && districts.none { it.equals(draftDistrict, ignoreCase = true) }) {
-            draftDistrict = ""
-        }
-    }
-    LaunchedEffect(draftState, draftDistrict, searchAreas) {
-        validationError = null
-    }
-
     val filters = remember(draftPropertyType, priceRange) {
         getFilterDefinitions(draftPropertyType, priceRange)
     }
@@ -679,42 +690,62 @@ private fun HomeFilterDialog(
                     }
                 }
                 item {
-                    Text(
-                        text = "Location Preference",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    DropdownField(
-                        label = "State",
-                        selectedValue = draftState,
-                        options = IndianLocations.allStateNames,
-                        onSelected = {
-                            draftState = it
-                            draftDistrict = ""
+                    val postedByOptions = listOf("All", "By User", "By Broker")
+                    val selectedPostedBy = when (draftFilters["ownerRole"] as? String) {
+                        "user" -> "By User"
+                        "broker" -> "By Broker"
+                        else -> "All"
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Posted By",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            postedByOptions.forEach { option ->
+                                val isSelected = option == selectedPostedBy
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = if (isSelected) PrimaryStart else Color.White,
+                                            shape = RoundedCornerShape(999.dp)
+                                        )
+                                        .border(
+                                            width = 1.5.dp,
+                                            color = if (isSelected) PrimaryStart else BorderColor,
+                                            shape = RoundedCornerShape(999.dp)
+                                        )
+                                        .clickable {
+                                            draftFilters = draftFilters.toMutableMap().apply {
+                                                when (option) {
+                                                    "By User" -> put("ownerRole", "user")
+                                                    "By Broker" -> put("ownerRole", "broker")
+                                                    else -> remove("ownerRole")
+                                                }
+                                            }
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = option,
+                                        color = if (isSelected) Color.White else TextPrimary,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
-                    )
-                    DropdownField(
-                        label = "District",
-                        selectedValue = draftDistrict,
-                        options = if (districts.isEmpty()) listOf("Select State First") else districts,
-                        onSelected = { draftDistrict = it }
-                    )
+                    }
                 }
                 item {
-                    val restriction = if (draftState.isNotBlank()) {
-                        LocationRestriction(
-                            stateCode = IndianLocations.getStateByName(draftState)?.isoCode ?: "",
-                            stateName = draftState,
-                            districtName = draftDistrict
-                        )
-                    } else null
                     LocationSearchField(
                         context = context,
                         selectedAreas = searchAreas,
                         onSelectedAreasChange = { searchAreas = it },
                         onOpenFilter = {},
-                        locationRestriction = restriction
+                        locationRestriction = initialLocationRestriction
                     )
                 }
                 if (searchAreas.isNotEmpty()) {
@@ -796,15 +827,6 @@ private fun HomeFilterDialog(
                     }
                 }
             }
-            if (validationError != null) {
-                Text(
-                    text = validationError!!,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -818,9 +840,6 @@ private fun HomeFilterDialog(
                         )
                         searchAreas = emptyList()
                         radiusKm = 1
-                        draftState = ""
-                        draftDistrict = ""
-                        validationError = null
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp)
@@ -829,32 +848,20 @@ private fun HomeFilterDialog(
                 }
                 Button(
                     onClick = {
-                        when {
-                            draftState.isBlank() -> validationError = "Please select a state"
-                            draftDistrict.isBlank() -> validationError = "Please select a district"
-                            searchAreas.isEmpty() -> validationError = "Please select at least one search area"
-                            else -> {
-                                val cleaned = buildMap<String, Any> {
-                                    draftFilters.forEach { (key, value) ->
-                                        when (value) {
-                                            is List<*> -> {
-                                                val list = (value as? List<String>)?.filter { it.isNotBlank() }
-                                                if (!list.isNullOrEmpty()) put(key, list)
-                                            }
-                                            is String -> if (value.isNotBlank()) put(key, value)
-                                            is Int -> put(key, value)
-                                            is Float -> put(key, value.toInt())
-                                        }
+                        val cleaned = buildMap<String, Any> {
+                            draftFilters.forEach { (key, value) ->
+                                when (value) {
+                                    is List<*> -> {
+                                        val list = (value as? List<String>)?.filter { it.isNotBlank() }
+                                        if (!list.isNullOrEmpty()) put(key, list)
                                     }
+                                    is String -> if (value.isNotBlank()) put(key, value)
+                                    is Int -> put(key, value)
+                                    is Float -> put(key, value.toInt())
                                 }
-                                val locationRestriction = LocationRestriction(
-                                    stateCode = IndianLocations.getStateByName(draftState)?.isoCode ?: "",
-                                    stateName = draftState,
-                                    districtName = draftDistrict
-                                )
-                                onApply(draftPropertyType, cleaned, searchAreas, radiusKm, locationRestriction)
                             }
                         }
+                        onApply(draftPropertyType, cleaned, searchAreas, radiusKm, initialLocationRestriction)
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
@@ -1107,6 +1114,73 @@ private suspend fun fetchSearchArea(
         lat = place.latLng?.latitude,
         lng = place.latLng?.longitude
     )
+}
+
+@Composable
+private fun LocationGateBanner(uiState: HomeUiState) {
+    val hasState = !uiState.locationRestriction?.stateCode.isNullOrBlank()
+    val hasDistrict = !uiState.locationRestriction?.districtName.isNullOrBlank()
+    val hasArea = uiState.appliedSearchAreas.isNotEmpty()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .background(Color(0xFFF0F4FF), RoundedCornerShape(20.dp))
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Select Your Location",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "Please complete all 3 location steps to see properties.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        @Composable
+        fun StepRow(label: String, done: Boolean) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (done) PrimaryStart else Color(0xFFE0E0E0),
+                            CircleShape
+                        )
+                        .padding(6.dp)
+                ) {
+                    Text(
+                        text = if (done) "✓" else "○",
+                        color = if (done) Color.White else TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (done) PrimaryStart else TextSecondary,
+                    fontWeight = if (done) FontWeight.SemiBold else FontWeight.Normal
+                )
+            }
+        }
+
+        StepRow(label = "Select State", done = hasState)
+        StepRow(label = "Select District", done = hasDistrict)
+        StepRow(label = "Select at least one specific area", done = hasArea)
+    }
 }
 
 @Composable

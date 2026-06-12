@@ -8,6 +8,7 @@ import com.example.myapplication.data.repository.FavoritesRepository
 import com.example.myapplication.data.repository.InterestedRepository
 import com.example.myapplication.data.repository.LocationRestriction
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.utils.IndianLocations
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -150,9 +151,47 @@ class HomeViewModel(
         loadProperties(reset = true)
     }
 
+    fun updateState(stateName: String) {
+        val stateCode = IndianLocations.getStateByName(stateName)?.isoCode ?: ""
+        _uiState.value = _uiState.value.copy(
+            locationRestriction = LocationRestriction(
+                stateCode = stateCode,
+                stateName = stateName,
+                districtName = ""
+            ),
+            appliedSearchAreas = emptyList()
+        )
+        loadProperties(reset = true)
+    }
+
+    fun updateDistrict(districtName: String) {
+        val current = _uiState.value
+        _uiState.value = current.copy(
+            locationRestriction = current.locationRestriction?.copy(districtName = districtName)
+                ?: LocationRestriction(districtName = districtName),
+            appliedSearchAreas = emptyList()
+        )
+        loadProperties(reset = true)
+    }
+
     private fun loadProperties(reset: Boolean) {
         viewModelScope.launch {
             val current = _uiState.value
+
+            // Don't load until state + district + at least one area are all selected
+            if (!current.isLocationComplete) {
+                _uiState.value = current.copy(
+                    isInitialLoading = false,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    errorMessage = null,
+                    properties = emptyList(),
+                    hasMore = false
+                )
+                nextCursor = null
+                return@launch
+            }
+
             if (reset) {
                 nextCursor = null
                 _uiState.value = current.copy(

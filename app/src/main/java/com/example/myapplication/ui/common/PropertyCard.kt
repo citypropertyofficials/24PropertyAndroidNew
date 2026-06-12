@@ -116,6 +116,8 @@ fun PropertyCard(
 
             // Content
             Column(modifier = Modifier.padding(16.dp)) {
+                val isBrokerProperty = property.ownerRole.lowercase() == "broker"
+
                 // Property Name + Price (same line)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -141,10 +143,10 @@ fun PropertyCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Landmark
+                // Landmark — always visible, prefixed with "Nearby: "
                 if (property.landmark.isNotBlank()) {
                     Text(
-                        text = property.landmark,
+                        text = "Nearby: ${property.landmark}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -152,23 +154,25 @@ fun PropertyCard(
                     )
                 }
 
-                // Location (city, state)
-                val locationText = buildString {
-                    if (property.location.isNotBlank()) append(property.location)
-                    if (property.cityState.isNotBlank()) {
-                        if (isNotEmpty()) append(", ")
-                        append(property.cityState)
+                // Location (city, state) — hidden for broker-added properties
+                if (!isBrokerProperty) {
+                    val locationText = buildString {
+                        if (property.location.isNotBlank()) append(property.location)
+                        if (property.cityState.isNotBlank()) {
+                            if (isNotEmpty()) append(", ")
+                            append(property.cityState)
+                        }
                     }
-                }
-                if (locationText.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = locationText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (locationText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = locationText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 // Interested Button — hidden for property owner (matches web's PropertyCard.jsx)
