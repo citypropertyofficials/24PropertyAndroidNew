@@ -200,7 +200,6 @@ val residentialSections = listOf(
             PropertyFieldDefinition("maintenanceAmount", "Monthly Maintenance Amount (₹)", FormFieldType.NUMBER, placeholder = "e.g., 2500"),
             PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
             PropertyFieldDefinition("propertyShower", "Who Will Show This Property", FormFieldType.SELECT, listOf("Need help", "I will show", "Neighbours", "Friend", "Relative", "Security", "Tenants", "Other")),
-            PropertyFieldDefinition("showingDate", "Availability Date", FormFieldType.DATE, disabledWhen = FieldVisibilityRule("showingAvailability", setOf(ALL_DAY_AVAILABILITY))),
             PropertyFieldDefinition("showingStartTime", "Start Time", FormFieldType.TIME),
             PropertyFieldDefinition("showingEndTime", "End Time", FormFieldType.TIME),
             PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, SHOWING_AVAILABILITY_OPTIONS),
@@ -273,7 +272,6 @@ val commercialSections = listOf(
             PropertyFieldDefinition("currentSituation", "Current Situation of Property", FormFieldType.SELECT, listOf("Vacant", "Rental", "Self occupied", "Sell urgent")),
             PropertyFieldDefinition("waterSupplyType", "Water Supply", FormFieldType.SELECT, listOf("Corporation", "Borewell", "Both", "Other")),
             PropertyFieldDefinition("currentBusiness", "Current Business Running", FormFieldType.SELECT, listOf("Office", "Restaurant", "Cafe", "Salon", "Spa", "Store", "Showroom", "ATM", "Other")),
-            PropertyFieldDefinition("showingDate", "Property Showing Date", FormFieldType.DATE, disabledWhen = FieldVisibilityRule("showingAvailability", setOf(ALL_DAY_AVAILABILITY))),
             PropertyFieldDefinition("showingStartTime", "Start Time", FormFieldType.TIME),
             PropertyFieldDefinition("showingEndTime", "End Time", FormFieldType.TIME),
             PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, SHOWING_AVAILABILITY_OPTIONS)
@@ -415,7 +413,6 @@ val industrialSections = listOf(
         fields = listOf(
             PropertyFieldDefinition("possessionStatus", "Possession Status", FormFieldType.SELECT, listOf("Ready to Move", "Under Construction"), listingTypes = setOf(LISTING_TYPE_SALE), defaultValue = "Ready to Move"),
             PropertyFieldDefinition("availableFrom", "Available From", FormFieldType.SELECT, listOf("Immediate", "Within 15 Days", "Within 30 Days", "After 30 Days"), listingTypes = setOf(LISTING_TYPE_RENT), defaultValue = "Immediate"),
-            PropertyFieldDefinition("showingDate", "Property Showing Date", FormFieldType.DATE, disabledWhen = FieldVisibilityRule("showingAvailability", setOf(ALL_DAY_AVAILABILITY))),
             PropertyFieldDefinition("showingStartTime", "Start Time", FormFieldType.TIME),
             PropertyFieldDefinition("showingEndTime", "End Time", FormFieldType.TIME),
             PropertyFieldDefinition("showingAvailability", "Availability Schedule", FormFieldType.SELECT, SHOWING_AVAILABILITY_OPTIONS)

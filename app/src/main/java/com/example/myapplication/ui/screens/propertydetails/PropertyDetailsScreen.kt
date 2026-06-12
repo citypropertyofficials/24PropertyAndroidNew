@@ -373,9 +373,8 @@ private fun PropertyDetailsContent(
                     field("Availability Schedule", property.showingAvailability)
                 )
                 val splitShowingFields = mutableListOf<Pair<String, String>>()
-                val hasSplit = property.showingDate.isNotBlank() || property.showingStartTime.isNotBlank() || property.showingEndTime.isNotBlank()
+                val hasSplit = property.showingStartTime.isNotBlank() || property.showingEndTime.isNotBlank()
                 if (hasSplit) {
-                    if (property.showingDate.isNotBlank()) splitShowingFields += field("Property Showing Date", property.showingDate)!!
                     if (property.showingStartTime.isNotBlank()) splitShowingFields += field("Start Time", property.showingStartTime)!!
                     if (property.showingEndTime.isNotBlank()) splitShowingFields += field("End Time", property.showingEndTime)!!
                 } else if (property.showingDateTime.isNotBlank()) {

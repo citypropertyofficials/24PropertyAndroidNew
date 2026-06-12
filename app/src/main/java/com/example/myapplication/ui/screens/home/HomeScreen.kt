@@ -1119,7 +1119,6 @@ private suspend fun fetchSearchArea(
 @Composable
 private fun LocationGateBanner(uiState: HomeUiState) {
     val hasState = !uiState.locationRestriction?.stateCode.isNullOrBlank()
-    val hasDistrict = !uiState.locationRestriction?.districtName.isNullOrBlank()
     val hasArea = uiState.appliedSearchAreas.isNotEmpty()
 
     Column(
@@ -1139,7 +1138,7 @@ private fun LocationGateBanner(uiState: HomeUiState) {
             textAlign = TextAlign.Center
         )
         Text(
-            text = "Please complete all 3 location steps to see properties.",
+            text = "Please complete both location steps to see properties.",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -1178,7 +1177,6 @@ private fun LocationGateBanner(uiState: HomeUiState) {
         }
 
         StepRow(label = "Select State", done = hasState)
-        StepRow(label = "Select District", done = hasDistrict)
         StepRow(label = "Select at least one specific area", done = hasArea)
     }
 }
