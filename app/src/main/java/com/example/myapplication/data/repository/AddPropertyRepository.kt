@@ -6,6 +6,7 @@ import com.example.myapplication.utils.FirebaseConstants
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -24,7 +25,8 @@ interface AddPropertyRepository {
 
 class AddPropertyRepositoryImpl(
     private val firestore: FirebaseFirestore,
-    private val storage: FirebaseStorage
+    private val storage: FirebaseStorage,
+    private val functions: FirebaseFunctions
 ) : AddPropertyRepository {
 
     override suspend fun getUserPropertyCount(userId: String): Int {
@@ -45,59 +47,29 @@ class AddPropertyRepositoryImpl(
     }
 
     /**
-     * Creates a new property document using a Firestore transaction to atomically assign
-     * a sequential uniqueId from the counters/propertyId document.
-     * Matches the web's addProperty() transaction logic exactly:
-     *   - Reads counters/propertyId for the current ID
-     *   - Computes the next ID (A000001, A000002 ... A999999, B000000 ...)
-     *   - Sets property data + uniqueId + isActive + createdAt + updatedAt atomically
-     *   - Updates the counter document
+     * Creates a new property document by calling the respective Firebase Callable Cloud Function.
      */
     override suspend fun createProperty(propertyData: Map<String, Any?>): String {
-        val counterRef = firestore
-            .collection(FirebaseConstants.COLLECTION_COUNTERS)
-            .document(FirebaseConstants.COUNTER_DOC_PROPERTY_ID)
+        val propertyType = propertyData[FirebaseConstants.FIELD_PROPERTY_TYPE] as? String
+            ?: error("Property type is required")
 
-        val newPropertyRef = firestore.collection(FirebaseConstants.COLLECTION_PROPERTIES).document()
-
-        firestore.runTransaction { transaction ->
-            val counterDoc = transaction.get(counterRef)
-
-            val nextId = if (!counterDoc.exists()) {
-                "A000000"
-            } else {
-                val currentId = counterDoc.getString(FirebaseConstants.COUNTER_FIELD_CURRENT_ID) ?: "A000000"
-                getNextPropertyId(currentId)
-            }
-
-            val filtered = propertyData.filterValues { it != null }.toMutableMap<String, Any?>()
-            filtered[FirebaseConstants.FIELD_UNIQUE_ID] = nextId
-            filtered[FirebaseConstants.FIELD_IS_ACTIVE] = true
-            filtered[FirebaseConstants.FIELD_CREATED_AT] = FieldValue.serverTimestamp()
-            filtered[FirebaseConstants.FIELD_UPDATED_AT] = FieldValue.serverTimestamp()
-
-            transaction.set(newPropertyRef, filtered)
-            transaction.set(counterRef, mapOf(FirebaseConstants.COUNTER_FIELD_CURRENT_ID to nextId))
-        }.await()
-
-        return newPropertyRef.id
-    }
-
-    /**
-     * Generates the next sequential property ID.
-     * Examples: A000000 -> A000001, A999999 -> B000000
-     * Matches the web's getNextId() function exactly.
-     */
-    private fun getNextPropertyId(currentId: String): String {
-        if (currentId.length < 2) return "A000000"
-        val letter = currentId[0]
-        val number = currentId.substring(1).toIntOrNull() ?: 0
-        return if (number < 999999) {
-            "$letter${(number + 1).toString().padStart(6, '0')}"
-        } else {
-            val nextLetter = (letter.code + 1).toChar()
-            "${nextLetter}000000"
+        val functionName = when (propertyType) {
+            "residential" -> "addResidentialProperty"
+            "commercial" -> "addCommercialProperty"
+            "industrial" -> "addIndustrialProperty"
+            "land" -> "addLandProperty"
+            else -> error("Unsupported property type: $propertyType")
         }
+
+        val result = functions.getHttpsCallable(functionName)
+            .call(propertyData)
+            .await()
+
+        val resultData = result.data as? Map<*, *>
+            ?: throw Exception("Invalid response from server")
+
+        return resultData["propertyId"] as? String
+            ?: throw Exception("Property ID not returned from server")
     }
 
     override suspend fun updateProperty(propertyId: String, propertyData: Map<String, Any?>) {

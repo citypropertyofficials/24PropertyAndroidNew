@@ -20,6 +20,7 @@ import com.example.myapplication.ui.screens.splash.SplashViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.functions.FirebaseFunctions
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import com.example.myapplication.data.repository.DashboardRepository
@@ -37,6 +38,7 @@ val appModule = module {
     single { FirebaseAuth.getInstance() }
     single { FirebaseFirestore.getInstance() }
     single { FirebaseStorage.getInstance() }
+    single { FirebaseFunctions.getInstance() }
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::PropertyRepositoryImpl) bind PropertyRepository::class
     singleOf(::AddPropertyRepositoryImpl) bind AddPropertyRepository::class
